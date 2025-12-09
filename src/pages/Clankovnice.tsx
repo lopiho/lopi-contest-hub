@@ -31,9 +31,7 @@ interface Article {
   points_awarded: number;
   created_at: string;
   author_id: string;
-  profiles?: {
-    username: string;
-  };
+  author_username?: string;
   article_ratings?: {
     rating: number;
     user_id: string;
@@ -56,8 +54,6 @@ export default function Clankovnice() {
   const [submitting, setSubmitting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newArticle, setNewArticle] = useState({ title: '', content: '' });
-  const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
-  const [userRating, setUserRating] = useState(0);
 
   useEffect(() => {
     if (user) {
@@ -73,7 +69,6 @@ export default function Clankovnice() {
       .from('articles')
       .select(`
         *,
-        profiles:author_id(username),
         article_ratings(rating, user_id)
       `)
       .eq('status', 'approved')
@@ -84,14 +79,32 @@ export default function Clankovnice() {
       .from('articles')
       .select(`
         *,
-        profiles:author_id(username),
         article_ratings(rating, user_id)
       `)
       .eq('author_id', user?.id)
       .order('created_at', { ascending: false });
 
-    setArticles((publicArticles as Article[]) || []);
-    setMyArticles((userArticles as Article[]) || []);
+    // Fetch profiles separately to get usernames
+    const authorIds = [...new Set([
+      ...(publicArticles || []).map(a => a.author_id),
+      ...(userArticles || []).map(a => a.author_id)
+    ])];
+
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, username')
+      .in('id', authorIds);
+
+    const profileMap = new Map(profiles?.map(p => [p.id, p.username]) || []);
+
+    const mapArticles = (articles: typeof publicArticles) => 
+      (articles || []).map(a => ({
+        ...a,
+        author_username: profileMap.get(a.author_id) || 'Neznámý'
+      })) as Article[];
+
+    setArticles(mapArticles(publicArticles));
+    setMyArticles(mapArticles(userArticles));
     setLoading(false);
   };
 
@@ -140,7 +153,6 @@ export default function Clankovnice() {
     } else {
       toast.success(`Ohodnoceno ${rating}/10!`);
       fetchArticles();
-      setSelectedArticle(null);
     }
   };
 
@@ -246,7 +258,7 @@ export default function Clankovnice() {
               <div className="flex justify-center py-12">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
               </div>
-            ) : articles.length === 0 ? (
+            ) : articles.filter(a => a.author_id !== user?.id).length === 0 ? (
               <Card className="text-center py-12">
                 <CardContent>
                   <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -256,7 +268,7 @@ export default function Clankovnice() {
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {articles
-                  .filter(a => a.author_id !== user?.id) // Can't rate own articles
+                  .filter(a => a.author_id !== user?.id)
                   .map((article) => {
                     const avgRating = getAverageRating(article.article_ratings || []);
                     const myRating = getUserRating(article.article_ratings || []);
@@ -274,7 +286,7 @@ export default function Clankovnice() {
                             )}
                           </div>
                           <CardDescription>
-                            od @{article.profiles?.username}
+                            od @{article.author_username}
                           </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
@@ -292,7 +304,7 @@ export default function Clankovnice() {
                             <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                               <DialogHeader>
                                 <DialogTitle className="font-display text-xl">{article.title}</DialogTitle>
-                                <p className="text-sm text-muted-foreground">od @{article.profiles?.username}</p>
+                                <p className="text-sm text-muted-foreground">od @{article.author_username}</p>
                               </DialogHeader>
                               <div className="prose prose-sm max-w-none py-4 whitespace-pre-wrap">
                                 {article.content}
