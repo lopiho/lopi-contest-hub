@@ -11,7 +11,8 @@ import {
   User,
   Menu,
   X,
-  Coins
+  Coins,
+  Shield
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,10 +32,12 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [points, setPoints] = useState(0);
   const [username, setUsername] = useState('');
+  const [isOrganizer, setIsOrganizer] = useState(false);
 
   useEffect(() => {
     if (user) {
       fetchProfile();
+      checkRole();
     }
   }, [user]);
 
@@ -45,12 +48,24 @@ export default function Navbar() {
       .from('profiles')
       .select('username, points')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
     
     if (data) {
       setUsername(data.username);
       setPoints(data.points);
     }
+  };
+
+  const checkRole = async () => {
+    if (!user) return;
+    
+    const { data } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id);
+    
+    const hasOrgRole = data?.some(r => r.role === 'organizer' || r.role === 'helper');
+    setIsOrganizer(hasOrgRole || false);
   };
 
   const handleSignOut = async () => {
@@ -64,7 +79,7 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center shadow-card group-hover:shadow-glow transition-shadow">
+            <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-card group-hover:shadow-glow transition-shadow">
               <Trophy className="w-5 h-5 text-primary-foreground" />
             </div>
             <span className="font-display font-bold text-xl gradient-text hidden sm:block">
@@ -92,6 +107,18 @@ export default function Navbar() {
                 </Link>
               );
             })}
+            {isOrganizer && (
+              <Link to="/admin">
+                <Button 
+                  variant={location.pathname === '/admin' ? "default" : "ghost"} 
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Shield className="w-4 h-4" />
+                  Admin
+                </Button>
+              </Link>
+            )}
           </div>
 
           {/* User Section */}
@@ -160,6 +187,18 @@ export default function Navbar() {
                   </Link>
                 );
               })}
+
+              {isOrganizer && (
+                <Link to="/admin" onClick={() => setMobileMenuOpen(false)}>
+                  <Button 
+                    variant={location.pathname === '/admin' ? "default" : "ghost"} 
+                    className="w-full justify-start gap-3"
+                  >
+                    <Shield className="w-5 h-5" />
+                    Admin Panel
+                  </Button>
+                </Link>
+              )}
 
               <Button variant="destructive" className="mt-2 gap-2" onClick={handleSignOut}>
                 <LogOut className="w-4 h-4" />
