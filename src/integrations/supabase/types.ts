@@ -79,6 +79,83 @@ export type Database = {
         }
         Relationships: []
       }
+      guessing_games: {
+        Row: {
+          closed_at: string | null
+          correct_answer: string | null
+          created_at: string
+          created_by: string
+          id: string
+          image_url: string | null
+          points_awarded: number | null
+          question: string
+          status: Database["public"]["Enums"]["guessing_game_status"]
+          title: string
+          winner_id: string | null
+        }
+        Insert: {
+          closed_at?: string | null
+          correct_answer?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          image_url?: string | null
+          points_awarded?: number | null
+          question: string
+          status?: Database["public"]["Enums"]["guessing_game_status"]
+          title: string
+          winner_id?: string | null
+        }
+        Update: {
+          closed_at?: string | null
+          correct_answer?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          image_url?: string | null
+          points_awarded?: number | null
+          question?: string
+          status?: Database["public"]["Enums"]["guessing_game_status"]
+          title?: string
+          winner_id?: string | null
+        }
+        Relationships: []
+      }
+      guessing_tips: {
+        Row: {
+          created_at: string
+          game_id: string
+          id: string
+          is_winner: boolean | null
+          tip: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          game_id: string
+          id?: string
+          is_winner?: boolean | null
+          tip: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          game_id?: string
+          id?: string
+          is_winner?: boolean | null
+          tip?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guessing_tips_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "guessing_games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -145,6 +222,7 @@ export type Database = {
         | "rejected"
         | "rated"
         | "published"
+      guessing_game_status: "active" | "closed" | "resolved"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -274,6 +352,7 @@ export const Constants = {
     Enums: {
       app_role: ["user", "helper", "organizer"],
       article_status: ["pending", "approved", "rejected", "rated", "published"],
+      guessing_game_status: ["active", "closed", "resolved"],
     },
   },
 } as const

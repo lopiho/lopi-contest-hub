@@ -33,7 +33,7 @@ const categories = [
     description: 'Tipuj odpovědi na otázky a soutěž o body!',
     icon: HelpCircle,
     color: 'bg-accent',
-    available: false,
+    available: true,
   },
   {
     href: '/fotosoutez',
