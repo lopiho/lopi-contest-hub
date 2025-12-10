@@ -28,8 +28,12 @@ import {
   Plus,
   Image as ImageIcon,
   Trophy,
-  Users
+  Users,
+  Trash2,
+  UserPlus,
+  Crown
 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Navigate } from 'react-router-dom';
 
 interface Article {
@@ -66,16 +70,25 @@ interface GuessingGame {
   }[];
 }
 
+interface UserProfile {
+  id: string;
+  username: string;
+  points: number;
+  roles: string[];
+}
+
 export default function Admin() {
   const { user, loading: authLoading } = useAuth();
   const [isOrganizer, setIsOrganizer] = useState(false);
   const [checkingRole, setCheckingRole] = useState(true);
   const [articles, setArticles] = useState<Article[]>([]);
   const [games, setGames] = useState<GuessingGame[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [pointsToAward, setPointsToAward] = useState('');
   const [processing, setProcessing] = useState(false);
   const [selectedArticleForPublish, setSelectedArticleForPublish] = useState<Article | null>(null);
+  const [articleToDelete, setArticleToDelete] = useState<Article | null>(null);
   
   // New game form
   const [newGameDialogOpen, setNewGameDialogOpen] = useState(false);
@@ -87,6 +100,10 @@ export default function Admin() {
   const [correctAnswer, setCorrectAnswer] = useState('');
   const [selectedWinnerId, setSelectedWinnerId] = useState<string | null>(null);
   const [gamePoints, setGamePoints] = useState('10');
+
+  // Role management
+  const [selectedUserForRole, setSelectedUserForRole] = useState<UserProfile | null>(null);
+  const [newRole, setNewRole] = useState<string>('');
 
   useEffect(() => {
     if (user) {
@@ -112,7 +129,7 @@ export default function Admin() {
 
   const fetchData = async () => {
     setLoading(true);
-    await Promise.all([fetchArticles(), fetchGames()]);
+    await Promise.all([fetchArticles(), fetchGames(), fetchUsers()]);
     setLoading(false);
   };
 
@@ -179,6 +196,24 @@ export default function Admin() {
     setGames(mappedGames);
   };
 
+  const fetchUsers = async () => {
+    const { data: profilesData } = await supabase
+      .from('profiles')
+      .select('id, username, points')
+      .order('username');
+
+    const { data: rolesData } = await supabase
+      .from('user_roles')
+      .select('user_id, role');
+
+    const mappedUsers = (profilesData || []).map(p => ({
+      ...p,
+      roles: (rolesData || []).filter(r => r.user_id === p.id).map(r => r.role)
+    })) as UserProfile[];
+
+    setUsers(mappedUsers);
+  };
+
   // Article handlers
   const handleApprove = async (articleId: string) => {
     setProcessing(true);
@@ -222,6 +257,76 @@ export default function Admin() {
     setSelectedArticleForPublish(null);
     setPointsToAward('');
     fetchArticles();
+    setProcessing(false);
+  };
+
+  const handleDeleteArticle = async () => {
+    if (!articleToDelete) return;
+    setProcessing(true);
+    
+    const { error } = await supabase
+      .from('articles')
+      .delete()
+      .eq('id', articleToDelete.id);
+    
+    if (error) {
+      toast.error('Chyba při mazání článku');
+    } else {
+      toast.success('Článek smazán');
+      fetchArticles();
+    }
+    
+    setArticleToDelete(null);
+    setProcessing(false);
+  };
+
+  const handleAssignRole = async () => {
+    if (!selectedUserForRole || !newRole) return;
+    setProcessing(true);
+
+    // Check if user already has this role
+    const existingRole = selectedUserForRole.roles.includes(newRole);
+    if (existingRole) {
+      toast.error('Uživatel již má tuto roli');
+      setProcessing(false);
+      return;
+    }
+
+    const { error } = await supabase
+      .from('user_roles')
+      .insert({ user_id: selectedUserForRole.id, role: newRole as 'user' | 'helper' | 'organizer' });
+
+    if (error) {
+      toast.error('Chyba při přidělování role');
+    } else {
+      toast.success(`Role "${newRole}" přidělena uživateli @${selectedUserForRole.username}`);
+      fetchUsers();
+    }
+
+    setSelectedUserForRole(null);
+    setNewRole('');
+    setProcessing(false);
+  };
+
+  const handleRemoveRole = async (userId: string, role: string) => {
+    if (role === 'user') {
+      toast.error('Základní roli nelze odebrat');
+      return;
+    }
+    
+    setProcessing(true);
+    const { error } = await supabase
+      .from('user_roles')
+      .delete()
+      .eq('user_id', userId)
+      .eq('role', role as 'user' | 'helper' | 'organizer');
+
+    if (error) {
+      toast.error('Chyba při odebírání role');
+    } else {
+      toast.success('Role odebrána');
+      fetchUsers();
+    }
     setProcessing(false);
   };
 
@@ -387,15 +492,17 @@ export default function Admin() {
           <TabsList>
             <TabsTrigger value="articles" className="gap-2"><FileText className="w-4 h-4" />Články</TabsTrigger>
             <TabsTrigger value="tipovacky" className="gap-2"><HelpCircle className="w-4 h-4" />Tipovačky</TabsTrigger>
+            <TabsTrigger value="users" className="gap-2"><Crown className="w-4 h-4" />Uživatelé</TabsTrigger>
           </TabsList>
 
           {/* Articles Tab */}
           <TabsContent value="articles" className="space-y-6">
             <Tabs defaultValue="pending">
-              <TabsList className="grid w-full max-w-lg grid-cols-3">
+              <TabsList className="grid w-full max-w-2xl grid-cols-4">
                 <TabsTrigger value="pending">Ke schválení ({pendingArticles.length})</TabsTrigger>
                 <TabsTrigger value="approved">K publikaci ({approvedArticles.length})</TabsTrigger>
                 <TabsTrigger value="published">Publikováno</TabsTrigger>
+                <TabsTrigger value="all">Vše ({articles.length})</TabsTrigger>
               </TabsList>
 
               <TabsContent value="pending" className="space-y-4 mt-4">
@@ -416,6 +523,7 @@ export default function Admin() {
                           <div className="flex gap-2">
                             <Button variant="success" className="flex-1" onClick={() => handleApprove(article.id)} disabled={processing}><CheckCircle className="w-4 h-4 mr-2" />Schválit</Button>
                             <Button variant="destructive" className="flex-1" onClick={() => handleReject(article.id)} disabled={processing}><XCircle className="w-4 h-4 mr-2" />Zamítnout</Button>
+                            <Button variant="outline" size="icon" onClick={() => setArticleToDelete(article)} disabled={processing}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                           </div>
                         </CardContent>
                       </Card>
@@ -446,7 +554,10 @@ export default function Admin() {
                                 <Badge variant="secondary" className="bg-success/10 text-success w-fit">Doporučeno: {stats.suggestedPoints} bodů</Badge>
                               </div>
                             </div>
-                            <Button variant="hero" className="w-full" onClick={() => { setSelectedArticleForPublish(article); setPointsToAward(stats.suggestedPoints.toString()); }}><Coins className="w-4 h-4 mr-2" />Publikovat</Button>
+                            <div className="flex gap-2">
+                              <Button variant="hero" className="flex-1" onClick={() => { setSelectedArticleForPublish(article); setPointsToAward(stats.suggestedPoints.toString()); }}><Coins className="w-4 h-4 mr-2" />Publikovat</Button>
+                              <Button variant="outline" size="icon" onClick={() => setArticleToDelete(article)} disabled={processing}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                            </div>
                           </CardContent>
                         </Card>
                       );
@@ -463,11 +574,36 @@ export default function Admin() {
                         <CardTitle className="text-lg line-clamp-2">{article.title}</CardTitle>
                         <CardDescription>@{article.author_username}</CardDescription>
                       </CardHeader>
-                      <CardContent>
+                      <CardContent className="flex items-center justify-between">
                         <Badge className="bg-success/10 text-success">+{article.points_awarded} bodů</Badge>
+                        <Button variant="ghost" size="icon" onClick={() => setArticleToDelete(article)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                       </CardContent>
                     </Card>
                   ))}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="all" className="mt-4">
+                <div className="space-y-2">
+                  {articles.map((article) => {
+                    const statusColors: Record<string, string> = {
+                      pending: 'bg-yellow-500',
+                      approved: 'bg-blue-500',
+                      rejected: 'bg-destructive',
+                      rated: 'bg-accent',
+                      published: 'bg-success'
+                    };
+                    return (
+                      <div key={article.id} className="flex items-center justify-between p-3 bg-card rounded-lg border">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <Badge className={statusColors[article.status]}>{article.status}</Badge>
+                          <span className="font-medium truncate">{article.title}</span>
+                          <span className="text-sm text-muted-foreground">@{article.author_username}</span>
+                        </div>
+                        <Button variant="ghost" size="icon" onClick={() => setArticleToDelete(article)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                      </div>
+                    );
+                  })}
                 </div>
               </TabsContent>
             </Tabs>
@@ -537,6 +673,56 @@ export default function Admin() {
                         <span className="text-muted-foreground">Odpověď:</span> <strong>{game.correct_answer}</strong>
                       </div>
                     )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* Users Tab */}
+          <TabsContent value="users" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-display font-bold">Správa uživatelů a rolí</h2>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {users.map((u) => (
+                <Card key={u.id} className="shadow-card">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">@{u.username}</CardTitle>
+                      <Badge variant="secondary">{u.points} bodů</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex flex-wrap gap-1">
+                      {u.roles.map((role) => (
+                        <Badge 
+                          key={role} 
+                          className={`${role === 'organizer' ? 'bg-primary' : role === 'helper' ? 'bg-accent' : 'bg-muted text-muted-foreground'}`}
+                        >
+                          {role}
+                          {role !== 'user' && (
+                            <button 
+                              onClick={() => handleRemoveRole(u.id, role)} 
+                              className="ml-1 hover:text-destructive"
+                              disabled={processing}
+                            >
+                              ×
+                            </button>
+                          )}
+                        </Badge>
+                      ))}
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full gap-2"
+                      onClick={() => setSelectedUserForRole(u)}
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      Přidat roli
+                    </Button>
                   </CardContent>
                 </Card>
               ))}
@@ -613,6 +799,68 @@ export default function Admin() {
             <DialogFooter>
               <Button variant="ghost" onClick={() => setSelectedGameForResolve(null)}>Zrušit</Button>
               <Button variant="hero" onClick={handleResolveGame} disabled={processing || !selectedWinnerId}>{processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trophy className="w-4 h-4" />}<span className="ml-2">Ukončit a odměnit</span></Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Article Dialog */}
+        <Dialog open={!!articleToDelete} onOpenChange={(open) => !open && setArticleToDelete(null)}>
+          <DialogContent>
+            <DialogHeader><DialogTitle className="flex items-center gap-2 text-destructive"><Trash2 className="w-5 h-5" />Smazat článek</DialogTitle></DialogHeader>
+            {articleToDelete && (
+              <div className="space-y-4 py-4">
+                <p className="text-muted-foreground">Opravdu chceš smazat tento článek? Tato akce je nevratná.</p>
+                <div className="p-4 bg-muted rounded-lg">
+                  <p className="font-medium">{articleToDelete.title}</p>
+                  <p className="text-sm text-muted-foreground">@{articleToDelete.author_username}</p>
+                  <Badge className="mt-2">{articleToDelete.status}</Badge>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setArticleToDelete(null)}>Zrušit</Button>
+              <Button variant="destructive" onClick={handleDeleteArticle} disabled={processing}>
+                {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                <span className="ml-2">Smazat</span>
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Assign Role Dialog */}
+        <Dialog open={!!selectedUserForRole} onOpenChange={(open) => !open && setSelectedUserForRole(null)}>
+          <DialogContent>
+            <DialogHeader><DialogTitle className="flex items-center gap-2"><Crown className="w-5 h-5 text-primary" />Přidat roli</DialogTitle></DialogHeader>
+            {selectedUserForRole && (
+              <div className="space-y-4 py-4">
+                <div className="p-4 bg-muted rounded-lg">
+                  <p className="font-medium">@{selectedUserForRole.username}</p>
+                  <div className="flex gap-1 mt-2">
+                    {selectedUserForRole.roles.map((role) => (
+                      <Badge key={role} variant="secondary">{role}</Badge>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Vybrat roli</Label>
+                  <Select value={newRole} onValueChange={setNewRole}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Vyber roli..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="helper">Helper (pomocník)</SelectItem>
+                      <SelectItem value="organizer">Organizátor</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setSelectedUserForRole(null)}>Zrušit</Button>
+              <Button variant="hero" onClick={handleAssignRole} disabled={processing || !newRole}>
+                {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+                <span className="ml-2">Přidat roli</span>
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
