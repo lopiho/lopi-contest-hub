@@ -22,6 +22,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
+import PublishedArticlesList from '@/components/PublishedArticlesList';
 
 interface Article {
   id: string;
@@ -247,9 +248,10 @@ export default function Clankovnice() {
         </div>
 
         <Tabs defaultValue="rate" className="space-y-6">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsList className="grid w-full max-w-md grid-cols-3">
             <TabsTrigger value="rate">K hodnocení</TabsTrigger>
             <TabsTrigger value="my">Moje články</TabsTrigger>
+            <TabsTrigger value="published">Publikované</TabsTrigger>
           </TabsList>
 
           {/* Articles to rate */}
@@ -397,6 +399,11 @@ export default function Clankovnice() {
                 })}
               </div>
             )}
+          </TabsContent>
+
+          {/* Published articles */}
+          <TabsContent value="published" className="space-y-4">
+            <PublishedArticlesList />
           </TabsContent>
         </Tabs>
       </div>
