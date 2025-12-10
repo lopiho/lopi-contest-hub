@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Leaderboard from '@/components/Leaderboard';
+import PublishedArticlesCarousel from '@/components/PublishedArticlesCarousel';
 import { 
   Trophy, 
   FileText, 
@@ -218,8 +219,11 @@ export default function Index() {
         </div>
       </section>
 
+      {/* Published Articles */}
+      <PublishedArticlesCarousel />
+
       {/* How Points Work */}
-      <section className="py-16 bg-muted/30">
+      <section className="py-16">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-display font-bold mb-4">Jak fungují body?</h2>
