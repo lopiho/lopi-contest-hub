@@ -31,7 +31,10 @@ import {
   Users,
   Trash2,
   UserPlus,
-  Crown
+  Crown,
+  Edit,
+  Mail,
+  Send
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Navigate } from 'react-router-dom';
@@ -89,6 +92,14 @@ export default function Admin() {
   const [processing, setProcessing] = useState(false);
   const [selectedArticleForPublish, setSelectedArticleForPublish] = useState<Article | null>(null);
   const [articleToDelete, setArticleToDelete] = useState<Article | null>(null);
+  
+  // Article editing
+  const [articleToEdit, setArticleToEdit] = useState<Article | null>(null);
+  const [editedTitle, setEditedTitle] = useState('');
+  const [editedContent, setEditedContent] = useState('');
+  
+  // Message when publishing
+  const [publishMessage, setPublishMessage] = useState('');
   
   // New game form
   const [newGameDialogOpen, setNewGameDialogOpen] = useState(false);
@@ -253,11 +264,63 @@ export default function Admin() {
       }
     }
 
+    // Send message to author if message is provided
+    if (publishMessage.trim()) {
+      await supabase.from('messages').insert({
+        sender_id: user?.id,
+        recipient_id: selectedArticleForPublish.author_id,
+        subject: `Tvůj článek "${selectedArticleForPublish.title}" byl obodován`,
+        content: publishMessage.trim()
+      });
+    }
+
     toast.success(`Článek publikován! +${points} bodů`);
     setSelectedArticleForPublish(null);
     setPointsToAward('');
+    setPublishMessage('');
     fetchArticles();
     setProcessing(false);
+  };
+
+  const handleEditArticle = async () => {
+    if (!articleToEdit) return;
+    if (!editedTitle.trim() || !editedContent.trim()) {
+      toast.error('Vyplň název i obsah');
+      return;
+    }
+
+    setProcessing(true);
+    const { error } = await supabase
+      .from('articles')
+      .update({ title: editedTitle.trim(), content: editedContent.trim() })
+      .eq('id', articleToEdit.id);
+
+    if (error) {
+      toast.error('Chyba při úpravě článku');
+    } else {
+      toast.success('Článek upraven');
+      fetchArticles();
+    }
+
+    setArticleToEdit(null);
+    setEditedTitle('');
+    setEditedContent('');
+    setProcessing(false);
+  };
+
+  const openEditDialog = (article: Article) => {
+    setArticleToEdit(article);
+    setEditedTitle(article.title);
+    setEditedContent(article.content);
+  };
+
+  const generatePublishMessage = (points: number, averageRating: number | null) => {
+    const percentage = averageRating ? Math.round((averageRating / 10) * 100) : 0;
+    return `Ahoj,
+tvůj článek byl obodován a získal ${points} bodů. Popularita článku podle hodnocení ostatních dosáhla ${percentage}%. Na základě výsledků ti byla přidělena bodová odměna, která se ti připíše do systému.
+
+Hezký den,
+lopi`;
   };
 
   const handleDeleteArticle = async () => {
@@ -523,6 +586,7 @@ export default function Admin() {
                           <div className="flex gap-2">
                             <Button variant="success" className="flex-1" onClick={() => handleApprove(article.id)} disabled={processing}><CheckCircle className="w-4 h-4 mr-2" />Schválit</Button>
                             <Button variant="destructive" className="flex-1" onClick={() => handleReject(article.id)} disabled={processing}><XCircle className="w-4 h-4 mr-2" />Zamítnout</Button>
+                            <Button variant="outline" size="icon" onClick={() => openEditDialog(article)} disabled={processing}><Edit className="w-4 h-4" /></Button>
                             <Button variant="outline" size="icon" onClick={() => setArticleToDelete(article)} disabled={processing}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                           </div>
                         </CardContent>
@@ -555,7 +619,12 @@ export default function Admin() {
                               </div>
                             </div>
                             <div className="flex gap-2">
-                              <Button variant="hero" className="flex-1" onClick={() => { setSelectedArticleForPublish(article); setPointsToAward(stats.suggestedPoints.toString()); }}><Coins className="w-4 h-4 mr-2" />Publikovat</Button>
+                              <Button variant="hero" className="flex-1" onClick={() => { 
+                                setSelectedArticleForPublish(article); 
+                                setPointsToAward(stats.suggestedPoints.toString()); 
+                                setPublishMessage(generatePublishMessage(stats.suggestedPoints, stats.averageRating));
+                              }}><Coins className="w-4 h-4 mr-2" />Publikovat</Button>
+                              <Button variant="outline" size="icon" onClick={() => openEditDialog(article)} disabled={processing}><Edit className="w-4 h-4" /></Button>
                               <Button variant="outline" size="icon" onClick={() => setArticleToDelete(article)} disabled={processing}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                             </div>
                           </CardContent>
@@ -731,9 +800,9 @@ export default function Admin() {
         </Tabs>
 
         {/* Publish Article Dialog */}
-        <Dialog open={!!selectedArticleForPublish} onOpenChange={(open) => !open && setSelectedArticleForPublish(null)}>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Publikovat článek</DialogTitle></DialogHeader>
+        <Dialog open={!!selectedArticleForPublish} onOpenChange={(open) => { if (!open) { setSelectedArticleForPublish(null); setPublishMessage(''); } }}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader><DialogTitle className="flex items-center gap-2"><Coins className="w-5 h-5 text-primary" />Publikovat článek</DialogTitle></DialogHeader>
             {selectedArticleForPublish && (
               <div className="space-y-4 py-4">
                 <div className="p-4 bg-muted rounded-lg">
@@ -742,13 +811,29 @@ export default function Admin() {
                 </div>
                 <div className="space-y-2">
                   <Label>Bodová odměna</Label>
-                  <Input type="number" min="0" value={pointsToAward} onChange={(e) => setPointsToAward(e.target.value)} />
+                  <Input type="number" min="0" value={pointsToAward} onChange={(e) => {
+                    setPointsToAward(e.target.value);
+                    const stats = calculateRatingStats(selectedArticleForPublish.article_ratings || []);
+                    setPublishMessage(generatePublishMessage(parseInt(e.target.value) || 0, stats.averageRating));
+                  }} />
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2"><Mail className="w-4 h-4" />Zpráva pro autora (volitelné)</Label>
+                  <Textarea 
+                    value={publishMessage} 
+                    onChange={(e) => setPublishMessage(e.target.value)} 
+                    rows={6}
+                    placeholder="Zpráva bude odeslána autorovi článku..."
+                  />
                 </div>
               </div>
             )}
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setSelectedArticleForPublish(null)}>Zrušit</Button>
-              <Button variant="hero" onClick={handlePublishWithPoints} disabled={processing}>{processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}<span className="ml-2">Publikovat</span></Button>
+              <Button variant="ghost" onClick={() => { setSelectedArticleForPublish(null); setPublishMessage(''); }}>Zrušit</Button>
+              <Button variant="hero" onClick={handlePublishWithPoints} disabled={processing}>
+                {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                <span className="ml-2">Publikovat a odeslat</span>
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -860,6 +945,41 @@ export default function Admin() {
               <Button variant="hero" onClick={handleAssignRole} disabled={processing || !newRole}>
                 {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
                 <span className="ml-2">Přidat roli</span>
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Article Dialog */}
+        <Dialog open={!!articleToEdit} onOpenChange={(open) => { if (!open) { setArticleToEdit(null); setEditedTitle(''); setEditedContent(''); } }}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader><DialogTitle className="flex items-center gap-2"><Edit className="w-5 h-5 text-primary" />Upravit článek</DialogTitle></DialogHeader>
+            {articleToEdit && (
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Název článku</Label>
+                  <Input 
+                    value={editedTitle} 
+                    onChange={(e) => setEditedTitle(e.target.value)} 
+                    placeholder="Název článku"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Obsah článku</Label>
+                  <Textarea 
+                    value={editedContent} 
+                    onChange={(e) => setEditedContent(e.target.value)} 
+                    rows={12}
+                    placeholder="Obsah článku..."
+                  />
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => { setArticleToEdit(null); setEditedTitle(''); setEditedContent(''); }}>Zrušit</Button>
+              <Button variant="hero" onClick={handleEditArticle} disabled={processing}>
+                {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                <span className="ml-2">Uložit změny</span>
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -12,11 +12,13 @@ import {
   Menu,
   X,
   Coins,
-  Shield
+  Shield,
+  Mail
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 const navItems = [
   { href: '/', label: 'Domů', icon: Trophy },
@@ -33,11 +35,13 @@ export default function Navbar() {
   const [points, setPoints] = useState(0);
   const [username, setUsername] = useState('');
   const [isOrganizer, setIsOrganizer] = useState(false);
+  const [unreadMessages, setUnreadMessages] = useState(0);
 
   useEffect(() => {
     if (user) {
       fetchProfile();
       checkRole();
+      fetchUnreadMessages();
     }
   }, [user]);
 
@@ -66,6 +70,18 @@ export default function Navbar() {
     
     const hasOrgRole = data?.some(r => r.role === 'organizer' || r.role === 'helper');
     setIsOrganizer(hasOrgRole || false);
+  };
+
+  const fetchUnreadMessages = async () => {
+    if (!user) return;
+    
+    const { count } = await supabase
+      .from('messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('recipient_id', user.id)
+      .eq('is_read', false);
+    
+    setUnreadMessages(count || 0);
   };
 
   const handleSignOut = async () => {
@@ -133,6 +149,16 @@ export default function Navbar() {
 
                 {/* User Menu */}
                 <div className="hidden lg:flex items-center gap-2">
+                  <Link to="/posta">
+                    <Button variant="ghost" size="icon" className="relative">
+                      <Mail className="w-4 h-4" />
+                      {unreadMessages > 0 && (
+                        <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-primary">
+                          {unreadMessages}
+                        </Badge>
+                      )}
+                    </Button>
+                  </Link>
                   <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-full">
                     <User className="w-4 h-4 text-muted-foreground" />
                     <span className="font-medium text-sm">{username}</span>
@@ -187,6 +213,19 @@ export default function Navbar() {
                   </Link>
                 );
               })}
+
+              <Link to="/posta" onClick={() => setMobileMenuOpen(false)}>
+                <Button 
+                  variant={location.pathname === '/posta' ? "default" : "ghost"} 
+                  className="w-full justify-start gap-3"
+                >
+                  <Mail className="w-5 h-5" />
+                  Pošta
+                  {unreadMessages > 0 && (
+                    <Badge className="ml-auto bg-primary">{unreadMessages}</Badge>
+                  )}
+                </Button>
+              </Link>
 
               {isOrganizer && (
                 <Link to="/admin" onClick={() => setMobileMenuOpen(false)}>
