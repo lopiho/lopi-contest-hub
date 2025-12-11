@@ -12,6 +12,7 @@ import Tipovacky from "./pages/Tipovacky";
 import Fotosoutez from "./pages/Fotosoutez";
 import Obchudek from "./pages/Obchudek";
 import Admin from "./pages/Admin";
+import Posta from "./pages/Posta";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="/fotosoutez" element={<Layout><Fotosoutez /></Layout>} />
             <Route path="/obchudek" element={<Layout><Obchudek /></Layout>} />
             <Route path="/admin" element={<Layout><Admin /></Layout>} />
+            <Route path="/posta" element={<Layout><Posta /></Layout>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
