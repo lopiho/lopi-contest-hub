@@ -50,7 +50,7 @@ const categories = [
     description: 'Nakupuj, prodávej a směňuj za body!',
     icon: ShoppingBag,
     color: 'bg-secondary',
-    available: false,
+    available: true,
   },
 ];
 

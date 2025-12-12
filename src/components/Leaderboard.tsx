@@ -3,12 +3,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Trophy, Medal, Award, Coins } from 'lucide-react';
+import UserBadge from '@/components/UserBadge';
 
 interface LeaderboardUser {
   id: string;
   username: string;
   points: number;
   avatar_url: string | null;
+  roles: string[];
 }
 
 export default function Leaderboard() {
@@ -20,13 +22,22 @@ export default function Leaderboard() {
   }, []);
 
   const fetchLeaderboard = async () => {
-    const { data } = await supabase
+    const { data: profiles } = await supabase
       .from('profiles')
       .select('id, username, points, avatar_url')
       .order('points', { ascending: false })
       .limit(10);
 
-    setUsers(data || []);
+    const { data: rolesData } = await supabase
+      .from('user_roles')
+      .select('user_id, role');
+
+    const usersWithRoles = (profiles || []).map(p => ({
+      ...p,
+      roles: (rolesData || []).filter(r => r.user_id === p.id).map(r => r.role)
+    }));
+
+    setUsers(usersWithRoles);
     setLoading(false);
   };
 
@@ -120,7 +131,9 @@ export default function Leaderboard() {
                 </div>
                 
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold truncate">@{user.username}</p>
+                  <p className="font-semibold truncate">
+                    <UserBadge username={user.username} roles={user.roles} />
+                  </p>
                 </div>
                 
                 <Badge 

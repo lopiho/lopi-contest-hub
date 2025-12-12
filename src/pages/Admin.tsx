@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { toast } from 'sonner';
 import { calculateRatingStats, getRatingQuality } from '@/lib/points';
 import RatingDisplay from '@/components/RatingDisplay';
+import UserBadge, { getRoleDisplayName, getRoleBadgeColor } from '@/components/UserBadge';
 import { 
   Shield, 
   FileText, 
@@ -34,9 +35,14 @@ import {
   Crown,
   Edit,
   Mail,
-  Send
+  Send,
+  ShoppingBag,
+  Package,
+  ToggleLeft,
+  ToggleRight
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Navigate } from 'react-router-dom';
 
 interface Article {
@@ -80,6 +86,28 @@ interface UserProfile {
   roles: string[];
 }
 
+interface ShopItem {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  stock: number | null;
+  image_url: string | null;
+  is_active: boolean;
+}
+
+interface Purchase {
+  id: string;
+  user_id: string;
+  item_id: string;
+  quantity: number;
+  total_price: number;
+  status: string;
+  created_at: string;
+  username?: string;
+  item_name?: string;
+}
+
 export default function Admin() {
   const { user, loading: authLoading } = useAuth();
   const [isOrganizer, setIsOrganizer] = useState(false);
@@ -116,6 +144,14 @@ export default function Admin() {
   const [selectedUserForRole, setSelectedUserForRole] = useState<UserProfile | null>(null);
   const [newRole, setNewRole] = useState<string>('');
 
+  // Shop management
+  const [shopItems, setShopItems] = useState<ShopItem[]>([]);
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [newItemDialogOpen, setNewItemDialogOpen] = useState(false);
+  const [newItem, setNewItem] = useState({ name: '', description: '', price: '', stock: '' });
+  const [itemToEdit, setItemToEdit] = useState<ShopItem | null>(null);
+  const [editedItem, setEditedItem] = useState({ name: '', description: '', price: '', stock: '' });
+
   useEffect(() => {
     if (user) {
       checkRole();
@@ -140,7 +176,7 @@ export default function Admin() {
 
   const fetchData = async () => {
     setLoading(true);
-    await Promise.all([fetchArticles(), fetchGames(), fetchUsers()]);
+    await Promise.all([fetchArticles(), fetchGames(), fetchUsers(), fetchShopData()]);
     setLoading(false);
   };
 
@@ -223,6 +259,133 @@ export default function Admin() {
     })) as UserProfile[];
 
     setUsers(mappedUsers);
+  };
+
+  const fetchShopData = async () => {
+    const { data: itemsData } = await supabase
+      .from('shop_items')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    setShopItems(itemsData || []);
+
+    const { data: purchasesData } = await supabase
+      .from('purchases')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (purchasesData) {
+      const userIds = [...new Set(purchasesData.map(p => p.user_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .in('id', userIds);
+
+      const profileMap = new Map(profiles?.map(p => [p.id, p.username]) || []);
+
+      const mappedPurchases = purchasesData.map(p => ({
+        ...p,
+        username: profileMap.get(p.user_id) || 'Neznámý',
+        item_name: itemsData?.find(i => i.id === p.item_id)?.name || 'Neznámý'
+      }));
+
+      setPurchases(mappedPurchases);
+    }
+  };
+
+  const handleCreateShopItem = async () => {
+    if (!newItem.name.trim()) {
+      toast.error('Vyplň název položky');
+      return;
+    }
+
+    const price = parseInt(newItem.price);
+    if (isNaN(price) || price < 0) {
+      toast.error('Zadej platnou cenu');
+      return;
+    }
+
+    setProcessing(true);
+    const { error } = await supabase.from('shop_items').insert({
+      name: newItem.name.trim(),
+      description: newItem.description.trim() || null,
+      price,
+      stock: newItem.stock ? parseInt(newItem.stock) : null
+    });
+
+    if (error) {
+      toast.error('Chyba při vytváření položky');
+    } else {
+      toast.success('Položka vytvořena');
+      setNewItem({ name: '', description: '', price: '', stock: '' });
+      setNewItemDialogOpen(false);
+      fetchShopData();
+    }
+    setProcessing(false);
+  };
+
+  const handleUpdateShopItem = async () => {
+    if (!itemToEdit) return;
+
+    const price = parseInt(editedItem.price);
+    if (isNaN(price) || price < 0) {
+      toast.error('Zadej platnou cenu');
+      return;
+    }
+
+    setProcessing(true);
+    const { error } = await supabase.from('shop_items').update({
+      name: editedItem.name.trim(),
+      description: editedItem.description.trim() || null,
+      price,
+      stock: editedItem.stock ? parseInt(editedItem.stock) : null
+    }).eq('id', itemToEdit.id);
+
+    if (error) {
+      toast.error('Chyba při úpravě položky');
+    } else {
+      toast.success('Položka upravena');
+      setItemToEdit(null);
+      fetchShopData();
+    }
+    setProcessing(false);
+  };
+
+  const handleToggleItemActive = async (item: ShopItem) => {
+    const { error } = await supabase.from('shop_items')
+      .update({ is_active: !item.is_active })
+      .eq('id', item.id);
+
+    if (error) {
+      toast.error('Chyba při změně stavu');
+    } else {
+      toast.success(item.is_active ? 'Položka skryta' : 'Položka aktivována');
+      fetchShopData();
+    }
+  };
+
+  const handleDeleteShopItem = async (itemId: string) => {
+    const { error } = await supabase.from('shop_items').delete().eq('id', itemId);
+
+    if (error) {
+      toast.error('Chyba při mazání položky');
+    } else {
+      toast.success('Položka smazána');
+      fetchShopData();
+    }
+  };
+
+  const handleUpdatePurchaseStatus = async (purchaseId: string, status: string) => {
+    const { error } = await supabase.from('purchases')
+      .update({ status })
+      .eq('id', purchaseId);
+
+    if (error) {
+      toast.error('Chyba při aktualizaci objednávky');
+    } else {
+      toast.success('Objednávka aktualizována');
+      fetchShopData();
+    }
   };
 
   // Article handlers
@@ -552,9 +715,10 @@ lopi`;
         </div>
 
         <Tabs defaultValue="articles" className="space-y-6">
-          <TabsList>
+          <TabsList className="flex-wrap">
             <TabsTrigger value="articles" className="gap-2"><FileText className="w-4 h-4" />Články</TabsTrigger>
             <TabsTrigger value="tipovacky" className="gap-2"><HelpCircle className="w-4 h-4" />Tipovačky</TabsTrigger>
+            <TabsTrigger value="obchudek" className="gap-2"><ShoppingBag className="w-4 h-4" />Obchůdek</TabsTrigger>
             <TabsTrigger value="users" className="gap-2"><Crown className="w-4 h-4" />Uživatelé</TabsTrigger>
           </TabsList>
 
@@ -748,6 +912,139 @@ lopi`;
             </div>
           </TabsContent>
 
+          {/* Obchůdek Tab */}
+          <TabsContent value="obchudek" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-display font-bold">Správa obchůdku</h2>
+              <Dialog open={newItemDialogOpen} onOpenChange={setNewItemDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="hero" className="gap-2"><Plus className="w-4 h-4" />Nová položka</Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader><DialogTitle>Vytvořit položku</DialogTitle></DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label>Název</Label>
+                      <Input placeholder="Např. Záhadný balíček" value={newItem.name} onChange={(e) => setNewItem({ ...newItem, name: e.target.value })} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Popis (volitelné)</Label>
+                      <Textarea placeholder="Popis položky..." value={newItem.description} onChange={(e) => setNewItem({ ...newItem, description: e.target.value })} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Cena (body)</Label>
+                        <Input type="number" min="0" placeholder="100" value={newItem.price} onChange={(e) => setNewItem({ ...newItem, price: e.target.value })} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Skladem (prázdné = neomezeně)</Label>
+                        <Input type="number" min="0" placeholder="Neomezeně" value={newItem.stock} onChange={(e) => setNewItem({ ...newItem, stock: e.target.value })} />
+                      </div>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="ghost" onClick={() => setNewItemDialogOpen(false)}>Zrušit</Button>
+                    <Button variant="hero" onClick={handleCreateShopItem} disabled={processing}>
+                      {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                      <span className="ml-2">Vytvořit</span>
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            <Tabs defaultValue="items">
+              <TabsList>
+                <TabsTrigger value="items">Položky ({shopItems.length})</TabsTrigger>
+                <TabsTrigger value="orders">Objednávky ({purchases.filter(p => p.status === 'pending').length})</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="items" className="mt-4">
+                {shopItems.length === 0 ? (
+                  <Card className="text-center py-12">
+                    <CardContent>
+                      <Package className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground">Žádné položky v obchůdku</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {shopItems.map((item) => (
+                      <Card key={item.id} className={`shadow-card ${!item.is_active ? 'opacity-60' : ''}`}>
+                        <CardHeader className="pb-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <CardTitle className="text-lg">{item.name}</CardTitle>
+                            <Badge className={item.is_active ? 'bg-success' : 'bg-muted'}>{item.is_active ? 'Aktivní' : 'Skryto'}</Badge>
+                          </div>
+                          {item.description && <CardDescription>{item.description}</CardDescription>}
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <Badge className="bg-success/10 text-success gap-1"><Coins className="w-3 h-3" />{item.price} bodů</Badge>
+                            <span className="text-sm text-muted-foreground">{item.stock !== null ? `Skladem: ${item.stock}` : 'Neomezeně'}</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button variant="outline" size="sm" className="flex-1" onClick={() => handleToggleItemActive(item)}>
+                              {item.is_active ? <ToggleRight className="w-4 h-4 mr-1" /> : <ToggleLeft className="w-4 h-4 mr-1" />}
+                              {item.is_active ? 'Skrýt' : 'Aktivovat'}
+                            </Button>
+                            <Button variant="outline" size="icon" onClick={() => { setItemToEdit(item); setEditedItem({ name: item.name, description: item.description || '', price: item.price.toString(), stock: item.stock?.toString() || '' }); }}>
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button variant="outline" size="icon" onClick={() => handleDeleteShopItem(item.id)}>
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="orders" className="mt-4">
+                {purchases.length === 0 ? (
+                  <Card className="text-center py-12">
+                    <CardContent>
+                      <ShoppingBag className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground">Žádné objednávky</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-3">
+                    {purchases.map((purchase) => (
+                      <Card key={purchase.id} className="shadow-card">
+                        <CardContent className="pt-4">
+                          <div className="flex items-center justify-between gap-4 flex-wrap">
+                            <div>
+                              <p className="font-medium">{purchase.item_name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                <UserBadge username={purchase.username || ''} /> • {new Date(purchase.created_at).toLocaleDateString('cs-CZ')}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge className="bg-success/10 text-success">{purchase.total_price} bodů</Badge>
+                              <Select value={purchase.status} onValueChange={(value) => handleUpdatePurchaseStatus(purchase.id, value)}>
+                                <SelectTrigger className="w-32">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="pending">Čeká</SelectItem>
+                                  <SelectItem value="completed">Vyřízeno</SelectItem>
+                                  <SelectItem value="cancelled">Zrušeno</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          </TabsContent>
+
           {/* Users Tab */}
           <TabsContent value="users" className="space-y-6">
             <div className="flex justify-between items-center">
@@ -759,7 +1056,7 @@ lopi`;
                 <Card key={u.id} className="shadow-card">
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">@{u.username}</CardTitle>
+                      <CardTitle className="text-lg"><UserBadge username={u.username} roles={u.roles} /></CardTitle>
                       <Badge variant="secondary">{u.points} bodů</Badge>
                     </div>
                   </CardHeader>
@@ -768,9 +1065,9 @@ lopi`;
                       {u.roles.map((role) => (
                         <Badge 
                           key={role} 
-                          className={`${role === 'organizer' ? 'bg-primary' : role === 'helper' ? 'bg-accent' : 'bg-muted text-muted-foreground'}`}
+                          className={getRoleBadgeColor(role)}
                         >
-                          {role}
+                          {getRoleDisplayName(role)}
                           {role !== 'user' && (
                             <button 
                               onClick={() => handleRemoveRole(u.id, role)} 
@@ -980,6 +1277,42 @@ lopi`;
               <Button variant="hero" onClick={handleEditArticle} disabled={processing}>
                 {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
                 <span className="ml-2">Uložit změny</span>
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Shop Item Dialog */}
+        <Dialog open={!!itemToEdit} onOpenChange={(open) => !open && setItemToEdit(null)}>
+          <DialogContent>
+            <DialogHeader><DialogTitle className="flex items-center gap-2"><Edit className="w-5 h-5 text-primary" />Upravit položku</DialogTitle></DialogHeader>
+            {itemToEdit && (
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Název</Label>
+                  <Input value={editedItem.name} onChange={(e) => setEditedItem({ ...editedItem, name: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Popis</Label>
+                  <Textarea value={editedItem.description} onChange={(e) => setEditedItem({ ...editedItem, description: e.target.value })} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Cena (body)</Label>
+                    <Input type="number" min="0" value={editedItem.price} onChange={(e) => setEditedItem({ ...editedItem, price: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Skladem</Label>
+                    <Input type="number" min="0" placeholder="Neomezeně" value={editedItem.stock} onChange={(e) => setEditedItem({ ...editedItem, stock: e.target.value })} />
+                  </div>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setItemToEdit(null)}>Zrušit</Button>
+              <Button variant="hero" onClick={handleUpdateShopItem} disabled={processing}>
+                {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                <span className="ml-2">Uložit</span>
               </Button>
             </DialogFooter>
           </DialogContent>
