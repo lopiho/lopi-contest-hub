@@ -2,7 +2,7 @@ import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowRight, HelpCircle, Award } from "lucide-react";
+import { ArrowRight, Award, Book } from "lucide-react";
 const NotFound = () => {
   const location = useLocation();
   useEffect(() => {
@@ -47,7 +47,7 @@ const NotFound = () => {
               <Link to="/clankovnice">
                 <Button variant="outline" size="lg" className="gap-2">
                   Projdi kategorie
-                  <HelpCircle className="w-4 h-4" />
+                  <Book className="w-4 h-4" />
                 </Button>
               </Link>
             </div>
