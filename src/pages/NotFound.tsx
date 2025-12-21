@@ -2,29 +2,27 @@ import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowRight, FileText, HelpCircle } from "lucide-react";
-
+import { ArrowRight, HelpCircle, Award } from "lucide-react";
 const NotFound = () => {
   const location = useLocation();
-
   useEffect(() => {
     console.error("404 Error: User attempted to access non-existent route:", location.pathname);
   }, [location.pathname]);
-
-  return (
-    <div className="min-h-[calc(100vh-4rem)]">
+  return <div className="min-h-[calc(100vh-4rem)]">
       {/* Hero-like 404 to match Index */}
       <section className="relative overflow-hidden bg-gradient-hero py-20 lg:py-32">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-10 left-[10%] w-32 h-32 bg-primary/20 rounded-full blur-3xl animate-float" />
-          <div className="absolute bottom-10 right-[15%] w-48 h-48 bg-accent/20 rounded-full blur-3xl animate-float" style={{ animationDelay: '1.5s' }} />
+          <div className="absolute bottom-10 right-[15%] w-48 h-48 bg-accent/20 rounded-full blur-3xl animate-float" style={{
+          animationDelay: '1.5s'
+        }} />
           <div className="absolute top-1/2 right-[30%] w-24 h-24 bg-success/20 rounded-full blur-2xl animate-pulse-slow" />
         </div>
 
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-3xl mx-auto text-center text-secondary-foreground">
             <div className="inline-flex items-center gap-2 bg-primary/20 backdrop-blur-sm px-4 py-2 rounded-full mb-6 animate-fade-in">
-              <FileText className="w-4 h-4 text-primary" />
+              <Award className="w-4 h-4 text-primary" />
               <span className="text-sm font-medium">Lopiho Soutěž</span>
             </div>
 
@@ -36,7 +34,9 @@ const NotFound = () => {
               Oops — stránka, kterou hledáš, nebyla nalezena.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center animate-slide-up" style={{ animationDelay: '0.2s' }}>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center animate-slide-up" style={{
+            animationDelay: '0.2s'
+          }}>
               <Link to="/">
                 <Button variant="hero" size="lg" className="gap-2">
                   Zpět na hlavní
@@ -74,8 +74,6 @@ const NotFound = () => {
           </div>
         </div>
       </section>
-    </div>
-  );
+    </div>;
 };
-
 export default NotFound;
