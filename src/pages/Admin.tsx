@@ -13,38 +13,10 @@ import { toast } from 'sonner';
 import { calculateRatingStats, getRatingQuality } from '@/lib/points';
 import RatingDisplay from '@/components/RatingDisplay';
 import UserBadge, { getRoleDisplayName, getRoleBadgeColor } from '@/components/UserBadge';
-import { 
-  Shield, 
-  FileText, 
-  CheckCircle, 
-  XCircle, 
-  Star,
-  Loader2,
-  Coins,
-  Clock,
-  AlertTriangle,
-  Sparkles,
-  TrendingUp,
-  HelpCircle,
-  Plus,
-  Image as ImageIcon,
-  Trophy,
-  Users,
-  Trash2,
-  UserPlus,
-  Crown,
-  Edit,
-  Mail,
-  Send,
-  ShoppingBag,
-  Package,
-  ToggleLeft,
-  ToggleRight
-} from 'lucide-react';
+import { FileText, CheckCircle, XCircle, Star, Loader2, Coins, Clock, AlertTriangle, Sparkles, TrendingUp, HelpCircle, Plus, Image as ImageIcon, Trophy, Users, Trash2, UserPlus, Crown, Edit, Mail, Send, ShoppingBag, Package, ToggleLeft, ToggleRight, Award } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Navigate } from 'react-router-dom';
-
 interface Article {
   id: string;
   title: string;
@@ -59,7 +31,6 @@ interface Article {
     user_id: string;
   }[];
 }
-
 interface GuessingGame {
   id: string;
   title: string;
@@ -78,14 +49,12 @@ interface GuessingGame {
     username?: string;
   }[];
 }
-
 interface UserProfile {
   id: string;
   username: string;
   points: number;
   roles: string[];
 }
-
 interface ShopItem {
   id: string;
   name: string;
@@ -95,7 +64,6 @@ interface ShopItem {
   image_url: string | null;
   is_active: boolean;
 }
-
 interface Purchase {
   id: string;
   user_id: string;
@@ -107,9 +75,11 @@ interface Purchase {
   username?: string;
   item_name?: string;
 }
-
 export default function Admin() {
-  const { user, loading: authLoading } = useAuth();
+  const {
+    user,
+    loading: authLoading
+  } = useAuth();
   const [isOrganizer, setIsOrganizer] = useState(false);
   const [checkingRole, setCheckingRole] = useState(true);
   const [articles, setArticles] = useState<Article[]>([]);
@@ -120,18 +90,22 @@ export default function Admin() {
   const [processing, setProcessing] = useState(false);
   const [selectedArticleForPublish, setSelectedArticleForPublish] = useState<Article | null>(null);
   const [articleToDelete, setArticleToDelete] = useState<Article | null>(null);
-  
+
   // Article editing
   const [articleToEdit, setArticleToEdit] = useState<Article | null>(null);
   const [editedTitle, setEditedTitle] = useState('');
   const [editedContent, setEditedContent] = useState('');
-  
+
   // Message when publishing
   const [publishMessage, setPublishMessage] = useState('');
-  
+
   // New game form
   const [newGameDialogOpen, setNewGameDialogOpen] = useState(false);
-  const [newGame, setNewGame] = useState({ title: '', question: '', imageFile: null as File | null });
+  const [newGame, setNewGame] = useState({
+    title: '',
+    question: '',
+    imageFile: null as File | null
+  });
   const [uploadingImage, setUploadingImage] = useState(false);
 
   // Resolve game
@@ -148,67 +122,64 @@ export default function Admin() {
   const [shopItems, setShopItems] = useState<ShopItem[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [newItemDialogOpen, setNewItemDialogOpen] = useState(false);
-  const [newItem, setNewItem] = useState({ name: '', description: '', price: '', stock: '' });
+  const [newItem, setNewItem] = useState({
+    name: '',
+    description: '',
+    price: '',
+    stock: ''
+  });
   const [itemToEdit, setItemToEdit] = useState<ShopItem | null>(null);
-  const [editedItem, setEditedItem] = useState({ name: '', description: '', price: '', stock: '' });
-
+  const [editedItem, setEditedItem] = useState({
+    name: '',
+    description: '',
+    price: '',
+    stock: ''
+  });
   useEffect(() => {
     if (user) {
       checkRole();
     }
   }, [user]);
-
   const checkRole = async () => {
     setCheckingRole(true);
-    const { data } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user?.id);
-    
+    const {
+      data
+    } = await supabase.from('user_roles').select('role').eq('user_id', user?.id);
     const hasOrgRole = data?.some(r => r.role === 'organizer' || r.role === 'helper');
     setIsOrganizer(hasOrgRole || false);
-    
     if (hasOrgRole) {
       fetchData();
     }
     setCheckingRole(false);
   };
-
   const fetchData = async () => {
     setLoading(true);
     await Promise.all([fetchArticles(), fetchGames(), fetchUsers(), fetchShopData()]);
     setLoading(false);
   };
-
   const fetchArticles = async () => {
-    const { data: allArticles } = await supabase
-      .from('articles')
-      .select(`*, article_ratings(rating, user_id)`)
-      .order('created_at', { ascending: false });
-
+    const {
+      data: allArticles
+    } = await supabase.from('articles').select(`*, article_ratings(rating, user_id)`).order('created_at', {
+      ascending: false
+    });
     const authorIds = [...new Set((allArticles || []).map(a => a.author_id))];
-
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, username')
-      .in('id', authorIds);
-
+    const {
+      data: profiles
+    } = await supabase.from('profiles').select('id, username').in('id', authorIds);
     const profileMap = new Map(profiles?.map(p => [p.id, p.username]) || []);
-
     const mappedArticles = (allArticles || []).map(a => ({
       ...a,
       author_username: profileMap.get(a.author_id) || 'Neznámý'
     })) as Article[];
-
     setArticles(mappedArticles);
   };
-
   const fetchGames = async () => {
-    const { data: gamesData } = await supabase
-      .from('guessing_games')
-      .select('*')
-      .order('created_at', { ascending: false });
-
+    const {
+      data: gamesData
+    } = await supabase.from('guessing_games').select('*').order('created_at', {
+      ascending: false
+    });
     if (!gamesData) {
       setGames([]);
       return;
@@ -216,131 +187,114 @@ export default function Admin() {
 
     // Fetch tips for all games
     const gameIds = gamesData.map(g => g.id);
-    const { data: tipsData } = await supabase
-      .from('guessing_tips')
-      .select('*')
-      .in('game_id', gameIds);
+    const {
+      data: tipsData
+    } = await supabase.from('guessing_tips').select('*').in('game_id', gameIds);
 
     // Fetch usernames for tip authors
     const tipUserIds = [...new Set((tipsData || []).map(t => t.user_id))];
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, username')
-      .in('id', tipUserIds);
-
+    const {
+      data: profiles
+    } = await supabase.from('profiles').select('id, username').in('id', tipUserIds);
     const profileMap = new Map(profiles?.map(p => [p.id, p.username]) || []);
-
     const mappedGames = gamesData.map(game => ({
       ...game,
-      tips: (tipsData || [])
-        .filter(t => t.game_id === game.id)
-        .map(t => ({
-          ...t,
-          username: profileMap.get(t.user_id) || 'Neznámý'
-        }))
+      tips: (tipsData || []).filter(t => t.game_id === game.id).map(t => ({
+        ...t,
+        username: profileMap.get(t.user_id) || 'Neznámý'
+      }))
     })) as GuessingGame[];
-
     setGames(mappedGames);
   };
-
   const fetchUsers = async () => {
-    const { data: profilesData } = await supabase
-      .from('profiles')
-      .select('id, username, points')
-      .order('username');
-
-    const { data: rolesData } = await supabase
-      .from('user_roles')
-      .select('user_id, role');
-
+    const {
+      data: profilesData
+    } = await supabase.from('profiles').select('id, username, points').order('username');
+    const {
+      data: rolesData
+    } = await supabase.from('user_roles').select('user_id, role');
     const mappedUsers = (profilesData || []).map(p => ({
       ...p,
       roles: (rolesData || []).filter(r => r.user_id === p.id).map(r => r.role)
     })) as UserProfile[];
-
     setUsers(mappedUsers);
   };
-
   const fetchShopData = async () => {
-    const { data: itemsData } = await supabase
-      .from('shop_items')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
+    const {
+      data: itemsData
+    } = await supabase.from('shop_items').select('*').order('created_at', {
+      ascending: false
+    });
     setShopItems(itemsData || []);
-
-    const { data: purchasesData } = await supabase
-      .from('purchases')
-      .select('*')
-      .order('created_at', { ascending: false });
-
+    const {
+      data: purchasesData
+    } = await supabase.from('purchases').select('*').order('created_at', {
+      ascending: false
+    });
     if (purchasesData) {
       const userIds = [...new Set(purchasesData.map(p => p.user_id))];
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, username')
-        .in('id', userIds);
-
+      const {
+        data: profiles
+      } = await supabase.from('profiles').select('id, username').in('id', userIds);
       const profileMap = new Map(profiles?.map(p => [p.id, p.username]) || []);
-
       const mappedPurchases = purchasesData.map(p => ({
         ...p,
         username: profileMap.get(p.user_id) || 'Neznámý',
         item_name: itemsData?.find(i => i.id === p.item_id)?.name || 'Neznámý'
       }));
-
       setPurchases(mappedPurchases);
     }
   };
-
   const handleCreateShopItem = async () => {
     if (!newItem.name.trim()) {
       toast.error('Vyplň název položky');
       return;
     }
-
     const price = parseInt(newItem.price);
     if (isNaN(price) || price < 0) {
       toast.error('Zadej platnou cenu');
       return;
     }
-
     setProcessing(true);
-    const { error } = await supabase.from('shop_items').insert({
+    const {
+      error
+    } = await supabase.from('shop_items').insert({
       name: newItem.name.trim(),
       description: newItem.description.trim() || null,
       price,
       stock: newItem.stock ? parseInt(newItem.stock) : null
     });
-
     if (error) {
       toast.error('Chyba při vytváření položky');
     } else {
       toast.success('Položka vytvořena');
-      setNewItem({ name: '', description: '', price: '', stock: '' });
+      setNewItem({
+        name: '',
+        description: '',
+        price: '',
+        stock: ''
+      });
       setNewItemDialogOpen(false);
       fetchShopData();
     }
     setProcessing(false);
   };
-
   const handleUpdateShopItem = async () => {
     if (!itemToEdit) return;
-
     const price = parseInt(editedItem.price);
     if (isNaN(price) || price < 0) {
       toast.error('Zadej platnou cenu');
       return;
     }
-
     setProcessing(true);
-    const { error } = await supabase.from('shop_items').update({
+    const {
+      error
+    } = await supabase.from('shop_items').update({
       name: editedItem.name.trim(),
       description: editedItem.description.trim() || null,
       price,
       stock: editedItem.stock ? parseInt(editedItem.stock) : null
     }).eq('id', itemToEdit.id);
-
     if (error) {
       toast.error('Chyba při úpravě položky');
     } else {
@@ -350,12 +304,12 @@ export default function Admin() {
     }
     setProcessing(false);
   };
-
   const handleToggleItemActive = async (item: ShopItem) => {
-    const { error } = await supabase.from('shop_items')
-      .update({ is_active: !item.is_active })
-      .eq('id', item.id);
-
+    const {
+      error
+    } = await supabase.from('shop_items').update({
+      is_active: !item.is_active
+    }).eq('id', item.id);
     if (error) {
       toast.error('Chyba při změně stavu');
     } else {
@@ -363,10 +317,10 @@ export default function Admin() {
       fetchShopData();
     }
   };
-
   const handleDeleteShopItem = async (itemId: string) => {
-    const { error } = await supabase.from('shop_items').delete().eq('id', itemId);
-
+    const {
+      error
+    } = await supabase.from('shop_items').delete().eq('id', itemId);
     if (error) {
       toast.error('Chyba při mazání položky');
     } else {
@@ -374,12 +328,12 @@ export default function Admin() {
       fetchShopData();
     }
   };
-
   const handleUpdatePurchaseStatus = async (purchaseId: string, status: string) => {
-    const { error } = await supabase.from('purchases')
-      .update({ status })
-      .eq('id', purchaseId);
-
+    const {
+      error
+    } = await supabase.from('purchases').update({
+      status
+    }).eq('id', purchaseId);
     if (error) {
       toast.error('Chyba při aktualizaci objednávky');
     } else {
@@ -391,39 +345,57 @@ export default function Admin() {
   // Article handlers
   const handleApprove = async (articleId: string) => {
     setProcessing(true);
-    const { error } = await supabase.from('articles').update({ status: 'approved' }).eq('id', articleId);
-    if (error) toast.error('Chyba při schvalování');
-    else { toast.success('Článek schválen!'); fetchArticles(); }
+    const {
+      error
+    } = await supabase.from('articles').update({
+      status: 'approved'
+    }).eq('id', articleId);
+    if (error) toast.error('Chyba při schvalování');else {
+      toast.success('Článek schválen!');
+      fetchArticles();
+    }
     setProcessing(false);
   };
-
   const handleReject = async (articleId: string) => {
     setProcessing(true);
-    const { error } = await supabase.from('articles').update({ status: 'rejected' }).eq('id', articleId);
-    if (error) toast.error('Chyba při zamítání');
-    else { toast.success('Článek zamítnut'); fetchArticles(); }
+    const {
+      error
+    } = await supabase.from('articles').update({
+      status: 'rejected'
+    }).eq('id', articleId);
+    if (error) toast.error('Chyba při zamítání');else {
+      toast.success('Článek zamítnut');
+      fetchArticles();
+    }
     setProcessing(false);
   };
-
   const handlePublishWithPoints = async () => {
     if (!selectedArticleForPublish) return;
     const points = parseInt(pointsToAward);
-    if (isNaN(points) || points < 0) { toast.error('Zadej platný počet bodů'); return; }
-
+    if (isNaN(points) || points < 0) {
+      toast.error('Zadej platný počet bodů');
+      return;
+    }
     setProcessing(true);
-    const { error } = await supabase.from('articles')
-      .update({ status: 'published', points_awarded: points })
-      .eq('id', selectedArticleForPublish.id);
-
-    if (error) { toast.error('Chyba při publikování'); setProcessing(false); return; }
-
+    const {
+      error
+    } = await supabase.from('articles').update({
+      status: 'published',
+      points_awarded: points
+    }).eq('id', selectedArticleForPublish.id);
+    if (error) {
+      toast.error('Chyba při publikování');
+      setProcessing(false);
+      return;
+    }
     if (points > 0) {
-      const { data: profile } = await supabase.from('profiles')
-        .select('points').eq('id', selectedArticleForPublish.author_id).maybeSingle();
+      const {
+        data: profile
+      } = await supabase.from('profiles').select('points').eq('id', selectedArticleForPublish.author_id).maybeSingle();
       if (profile) {
-        await supabase.from('profiles')
-          .update({ points: profile.points + points })
-          .eq('id', selectedArticleForPublish.author_id);
+        await supabase.from('profiles').update({
+          points: profile.points + points
+        }).eq('id', selectedArticleForPublish.author_id);
       }
     }
 
@@ -436,7 +408,6 @@ export default function Admin() {
         content: publishMessage.trim()
       });
     }
-
     toast.success(`Článek publikován! +${points} bodů`);
     setSelectedArticleForPublish(null);
     setPointsToAward('');
@@ -444,68 +415,58 @@ export default function Admin() {
     fetchArticles();
     setProcessing(false);
   };
-
   const handleEditArticle = async () => {
     if (!articleToEdit) return;
     if (!editedTitle.trim() || !editedContent.trim()) {
       toast.error('Vyplň název i obsah');
       return;
     }
-
     setProcessing(true);
-    const { error } = await supabase
-      .from('articles')
-      .update({ title: editedTitle.trim(), content: editedContent.trim() })
-      .eq('id', articleToEdit.id);
-
+    const {
+      error
+    } = await supabase.from('articles').update({
+      title: editedTitle.trim(),
+      content: editedContent.trim()
+    }).eq('id', articleToEdit.id);
     if (error) {
       toast.error('Chyba při úpravě článku');
     } else {
       toast.success('Článek upraven');
       fetchArticles();
     }
-
     setArticleToEdit(null);
     setEditedTitle('');
     setEditedContent('');
     setProcessing(false);
   };
-
   const openEditDialog = (article: Article) => {
     setArticleToEdit(article);
     setEditedTitle(article.title);
     setEditedContent(article.content);
   };
-
   const generatePublishMessage = (points: number, averageRating: number | null) => {
-    const percentage = averageRating ? Math.round((averageRating / 10) * 100) : 0;
+    const percentage = averageRating ? Math.round(averageRating / 10 * 100) : 0;
     return `Ahoj,
 tvůj článek byl obodován a získal ${points} bodů. Popularita článku podle hodnocení ostatních dosáhla ${percentage}%. Na základě výsledků ti byla přidělena bodová odměna, která se ti připíše do systému.
 
 Hezký den,
 lopi`;
   };
-
   const handleDeleteArticle = async () => {
     if (!articleToDelete) return;
     setProcessing(true);
-    
-    const { error } = await supabase
-      .from('articles')
-      .delete()
-      .eq('id', articleToDelete.id);
-    
+    const {
+      error
+    } = await supabase.from('articles').delete().eq('id', articleToDelete.id);
     if (error) {
       toast.error('Chyba při mazání článku');
     } else {
       toast.success('Článek smazán');
       fetchArticles();
     }
-    
     setArticleToDelete(null);
     setProcessing(false);
   };
-
   const handleAssignRole = async () => {
     if (!selectedUserForRole || !newRole) return;
     setProcessing(true);
@@ -517,36 +478,31 @@ lopi`;
       setProcessing(false);
       return;
     }
-
-    const { error } = await supabase
-      .from('user_roles')
-      .insert({ user_id: selectedUserForRole.id, role: newRole as 'user' | 'helper' | 'organizer' });
-
+    const {
+      error
+    } = await supabase.from('user_roles').insert({
+      user_id: selectedUserForRole.id,
+      role: newRole as 'user' | 'helper' | 'organizer'
+    });
     if (error) {
       toast.error('Chyba při přidělování role');
     } else {
       toast.success(`Role "${newRole}" přidělena uživateli @${selectedUserForRole.username}`);
       fetchUsers();
     }
-
     setSelectedUserForRole(null);
     setNewRole('');
     setProcessing(false);
   };
-
   const handleRemoveRole = async (userId: string, role: string) => {
     if (role === 'user') {
       toast.error('Základní roli nelze odebrat');
       return;
     }
-    
     setProcessing(true);
-    const { error } = await supabase
-      .from('user_roles')
-      .delete()
-      .eq('user_id', userId)
-      .eq('role', role as 'user' | 'helper' | 'organizer');
-
+    const {
+      error
+    } = await supabase.from('user_roles').delete().eq('user_id', userId).eq('role', role as 'user' | 'helper' | 'organizer');
     if (error) {
       toast.error('Chyba při odebírání role');
     } else {
@@ -562,88 +518,93 @@ lopi`;
       toast.error('Vyplň název a otázku');
       return;
     }
-
     setProcessing(true);
     let imageUrl = null;
-
     if (newGame.imageFile) {
       setUploadingImage(true);
       const fileName = `${Date.now()}-${newGame.imageFile.name}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('tipovacky')
-        .upload(fileName, newGame.imageFile);
-
+      const {
+        data: uploadData,
+        error: uploadError
+      } = await supabase.storage.from('tipovacky').upload(fileName, newGame.imageFile);
       if (uploadError) {
         toast.error('Chyba při nahrávání obrázku');
         setUploadingImage(false);
         setProcessing(false);
         return;
       }
-
-      const { data: urlData } = supabase.storage.from('tipovacky').getPublicUrl(fileName);
+      const {
+        data: urlData
+      } = supabase.storage.from('tipovacky').getPublicUrl(fileName);
       imageUrl = urlData.publicUrl;
       setUploadingImage(false);
     }
-
-    const { error } = await supabase.from('guessing_games').insert({
+    const {
+      error
+    } = await supabase.from('guessing_games').insert({
       created_by: user?.id,
       title: newGame.title.trim(),
       question: newGame.question.trim(),
-      image_url: imageUrl,
+      image_url: imageUrl
     });
-
     if (error) {
       toast.error('Chyba při vytváření tipovačky');
     } else {
       toast.success('Tipovačka vytvořena!');
-      setNewGame({ title: '', question: '', imageFile: null });
+      setNewGame({
+        title: '',
+        question: '',
+        imageFile: null
+      });
       setNewGameDialogOpen(false);
       fetchGames();
     }
     setProcessing(false);
   };
-
   const handleResolveGame = async () => {
     if (!selectedGameForResolve || !selectedWinnerId) {
       toast.error('Vyber vítěze');
       return;
     }
-
     const points = parseInt(gamePoints);
-    if (isNaN(points) || points < 0) { toast.error('Zadej platný počet bodů'); return; }
-
+    if (isNaN(points) || points < 0) {
+      toast.error('Zadej platný počet bodů');
+      return;
+    }
     setProcessing(true);
 
     // Update game
-    const { error: gameError } = await supabase.from('guessing_games')
-      .update({
-        status: 'resolved',
-        correct_answer: correctAnswer.trim() || null,
-        winner_id: selectedWinnerId,
-        points_awarded: points,
-        closed_at: new Date().toISOString()
-      })
-      .eq('id', selectedGameForResolve.id);
-
-    if (gameError) { toast.error('Chyba při ukončování'); setProcessing(false); return; }
+    const {
+      error: gameError
+    } = await supabase.from('guessing_games').update({
+      status: 'resolved',
+      correct_answer: correctAnswer.trim() || null,
+      winner_id: selectedWinnerId,
+      points_awarded: points,
+      closed_at: new Date().toISOString()
+    }).eq('id', selectedGameForResolve.id);
+    if (gameError) {
+      toast.error('Chyba při ukončování');
+      setProcessing(false);
+      return;
+    }
 
     // Mark winner tip
-    await supabase.from('guessing_tips')
-      .update({ is_winner: true })
-      .eq('game_id', selectedGameForResolve.id)
-      .eq('user_id', selectedWinnerId);
+    await supabase.from('guessing_tips').update({
+      is_winner: true
+    }).eq('game_id', selectedGameForResolve.id).eq('user_id', selectedWinnerId);
 
     // Award points
     if (points > 0) {
-      const { data: profile } = await supabase.from('profiles')
-        .select('points').eq('id', selectedWinnerId).maybeSingle();
+      const {
+        data: profile
+      } = await supabase.from('profiles').select('points').eq('id', selectedWinnerId).maybeSingle();
       if (profile) {
-        await supabase.from('profiles')
-          .update({ points: profile.points + points })
-          .eq('id', selectedWinnerId);
+        await supabase.from('profiles').update({
+          points: profile.points + points
+        }).eq('id', selectedWinnerId);
       }
     }
-
     toast.success(`Tipovačka ukončena! Vítěz získal ${points} bodů`);
     setSelectedGameForResolve(null);
     setCorrectAnswer('');
@@ -652,38 +613,29 @@ lopi`;
     fetchGames();
     setProcessing(false);
   };
-
   const pendingArticles = articles.filter(a => a.status === 'pending');
   const approvedArticles = articles.filter(a => a.status === 'approved' || a.status === 'rated');
   const activeGames = games.filter(g => g.status === 'active');
-
   if (authLoading || checkingRole) {
     return <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
   }
-
   if (!user) return <Navigate to="/auth" replace />;
-
   if (!isOrganizer) {
-    return (
-      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center">
+    return <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center">
         <Card className="max-w-md text-center"><CardContent className="pt-8">
           <AlertTriangle className="w-16 h-16 text-destructive mx-auto mb-4" />
           <h2 className="text-2xl font-display font-bold mb-2">Přístup odepřen</h2>
           <p className="text-muted-foreground">Pouze pro organizátory.</p>
         </CardContent></Card>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="min-h-[calc(100vh-4rem)] py-8">
+  return <div className="min-h-[calc(100vh-4rem)] py-8">
       <div className="container mx-auto px-4">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-display font-bold flex items-center gap-3">
-              <div className="w-12 h-12 bg-secondary rounded-2xl flex items-center justify-center shadow-card">
-                <Shield className="w-6 h-6 text-secondary-foreground" />
+            <h1 className="text-3xl font-display font-bold flex items-center gap-3">Organizátorství<div className="w-12 h-12 bg-secondary rounded-2xl flex items-center justify-center shadow-card">
+                <Award className="w-6 h-6 text-secondary-foreground" />
               </div>
               Admin Panel
             </h1>
@@ -733,12 +685,8 @@ lopi`;
               </TabsList>
 
               <TabsContent value="pending" className="space-y-4 mt-4">
-                {pendingArticles.length === 0 ? (
-                  <Card className="text-center py-12"><CardContent><CheckCircle className="w-12 h-12 text-success mx-auto mb-4" /><p className="text-muted-foreground">Žádné články ke schválení</p></CardContent></Card>
-                ) : (
-                  <div className="space-y-4">
-                    {pendingArticles.map((article) => (
-                      <Card key={article.id} className="shadow-card">
+                {pendingArticles.length === 0 ? <Card className="text-center py-12"><CardContent><CheckCircle className="w-12 h-12 text-success mx-auto mb-4" /><p className="text-muted-foreground">Žádné články ke schválení</p></CardContent></Card> : <div className="space-y-4">
+                    {pendingArticles.map(article => <Card key={article.id} className="shadow-card">
                         <CardHeader>
                           <div className="flex items-start justify-between gap-4">
                             <div><CardTitle>{article.title}</CardTitle><CardDescription>@{article.author_username}</CardDescription></div>
@@ -754,21 +702,15 @@ lopi`;
                             <Button variant="outline" size="icon" onClick={() => setArticleToDelete(article)} disabled={processing}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                           </div>
                         </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
+                      </Card>)}
+                  </div>}
               </TabsContent>
 
               <TabsContent value="approved" className="space-y-4 mt-4">
-                {approvedArticles.length === 0 ? (
-                  <Card className="text-center py-12"><CardContent><FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" /><p className="text-muted-foreground">Žádné články k publikaci</p></CardContent></Card>
-                ) : (
-                  <div className="space-y-4">
-                    {approvedArticles.map((article) => {
-                      const stats = calculateRatingStats(article.article_ratings || []);
-                      return (
-                        <Card key={article.id} className="shadow-card">
+                {approvedArticles.length === 0 ? <Card className="text-center py-12"><CardContent><FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" /><p className="text-muted-foreground">Žádné články k publikaci</p></CardContent></Card> : <div className="space-y-4">
+                    {approvedArticles.map(article => {
+                  const stats = calculateRatingStats(article.article_ratings || []);
+                  return <Card key={article.id} className="shadow-card">
                           <CardHeader>
                             <div className="flex items-start justify-between gap-4">
                               <div><CardTitle>{article.title}</CardTitle><CardDescription>@{article.author_username}</CardDescription></div>
@@ -783,26 +725,23 @@ lopi`;
                               </div>
                             </div>
                             <div className="flex gap-2">
-                              <Button variant="hero" className="flex-1" onClick={() => { 
-                                setSelectedArticleForPublish(article); 
-                                setPointsToAward(stats.suggestedPoints.toString()); 
-                                setPublishMessage(generatePublishMessage(stats.suggestedPoints, stats.averageRating));
-                              }}><Coins className="w-4 h-4 mr-2" />Publikovat</Button>
+                              <Button variant="hero" className="flex-1" onClick={() => {
+                          setSelectedArticleForPublish(article);
+                          setPointsToAward(stats.suggestedPoints.toString());
+                          setPublishMessage(generatePublishMessage(stats.suggestedPoints, stats.averageRating));
+                        }}><Coins className="w-4 h-4 mr-2" />Publikovat</Button>
                               <Button variant="outline" size="icon" onClick={() => openEditDialog(article)} disabled={processing}><Edit className="w-4 h-4" /></Button>
                               <Button variant="outline" size="icon" onClick={() => setArticleToDelete(article)} disabled={processing}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                             </div>
                           </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                )}
+                        </Card>;
+                })}
+                  </div>}
               </TabsContent>
 
               <TabsContent value="published" className="mt-4">
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {articles.filter(a => a.status === 'published').map((article) => (
-                    <Card key={article.id} className="shadow-card">
+                  {articles.filter(a => a.status === 'published').map(article => <Card key={article.id} className="shadow-card">
                       <CardHeader>
                         <CardTitle className="text-lg line-clamp-2">{article.title}</CardTitle>
                         <CardDescription>@{article.author_username}</CardDescription>
@@ -811,32 +750,29 @@ lopi`;
                         <Badge className="bg-success/10 text-success">+{article.points_awarded} bodů</Badge>
                         <Button variant="ghost" size="icon" onClick={() => setArticleToDelete(article)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                       </CardContent>
-                    </Card>
-                  ))}
+                    </Card>)}
                 </div>
               </TabsContent>
 
               <TabsContent value="all" className="mt-4">
                 <div className="space-y-2">
-                  {articles.map((article) => {
-                    const statusColors: Record<string, string> = {
-                      pending: 'bg-yellow-500',
-                      approved: 'bg-blue-500',
-                      rejected: 'bg-destructive',
-                      rated: 'bg-accent',
-                      published: 'bg-success'
-                    };
-                    return (
-                      <div key={article.id} className="flex items-center justify-between p-3 bg-card rounded-lg border">
+                  {articles.map(article => {
+                  const statusColors: Record<string, string> = {
+                    pending: 'bg-yellow-500',
+                    approved: 'bg-blue-500',
+                    rejected: 'bg-destructive',
+                    rated: 'bg-accent',
+                    published: 'bg-success'
+                  };
+                  return <div key={article.id} className="flex items-center justify-between p-3 bg-card rounded-lg border">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                           <Badge className={statusColors[article.status]}>{article.status}</Badge>
                           <span className="font-medium truncate">{article.title}</span>
                           <span className="text-sm text-muted-foreground">@{article.author_username}</span>
                         </div>
                         <Button variant="ghost" size="icon" onClick={() => setArticleToDelete(article)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
-                      </div>
-                    );
-                  })}
+                      </div>;
+                })}
                 </div>
               </TabsContent>
             </Tabs>
@@ -855,15 +791,24 @@ lopi`;
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
                       <Label>Název</Label>
-                      <Input placeholder="Např. Tipni věk" value={newGame.title} onChange={(e) => setNewGame({ ...newGame, title: e.target.value })} />
+                      <Input placeholder="Např. Tipni věk" value={newGame.title} onChange={e => setNewGame({
+                      ...newGame,
+                      title: e.target.value
+                    })} />
                     </div>
                     <div className="space-y-2">
                       <Label>Otázka</Label>
-                      <Textarea placeholder="Kolik let je osobě na fotce?" value={newGame.question} onChange={(e) => setNewGame({ ...newGame, question: e.target.value })} />
+                      <Textarea placeholder="Kolik let je osobě na fotce?" value={newGame.question} onChange={e => setNewGame({
+                      ...newGame,
+                      question: e.target.value
+                    })} />
                     </div>
                     <div className="space-y-2">
                       <Label>Obrázek (volitelné)</Label>
-                      <Input type="file" accept="image/*" onChange={(e) => setNewGame({ ...newGame, imageFile: e.target.files?.[0] || null })} />
+                      <Input type="file" accept="image/*" onChange={e => setNewGame({
+                      ...newGame,
+                      imageFile: e.target.files?.[0] || null
+                    })} />
                     </div>
                   </div>
                   <DialogFooter>
@@ -875,13 +820,10 @@ lopi`;
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {games.map((game) => (
-                <Card key={game.id} className={`shadow-card ${game.status === 'resolved' ? 'opacity-70' : ''}`}>
-                  {game.image_url && (
-                    <div className="aspect-video overflow-hidden rounded-t-lg">
+              {games.map(game => <Card key={game.id} className={`shadow-card ${game.status === 'resolved' ? 'opacity-70' : ''}`}>
+                  {game.image_url && <div className="aspect-video overflow-hidden rounded-t-lg">
                       <img src={game.image_url} alt={game.title} className="w-full h-full object-cover" />
-                    </div>
-                  )}
+                    </div>}
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <CardTitle className="text-lg">{game.title}</CardTitle>
@@ -895,20 +837,18 @@ lopi`;
                       {game.tips?.length || 0} tipů
                     </div>
 
-                    {game.status === 'active' && (
-                      <Button variant="outline" className="w-full" onClick={() => { setSelectedGameForResolve(game); setGamePoints('10'); }}>
+                    {game.status === 'active' && <Button variant="outline" className="w-full" onClick={() => {
+                  setSelectedGameForResolve(game);
+                  setGamePoints('10');
+                }}>
                         <Trophy className="w-4 h-4 mr-2" />Ukončit a vybrat vítěze
-                      </Button>
-                    )}
+                      </Button>}
 
-                    {game.status === 'resolved' && game.correct_answer && (
-                      <div className="p-2 bg-success/10 rounded text-sm">
+                    {game.status === 'resolved' && game.correct_answer && <div className="p-2 bg-success/10 rounded text-sm">
                         <span className="text-muted-foreground">Odpověď:</span> <strong>{game.correct_answer}</strong>
-                      </div>
-                    )}
+                      </div>}
                   </CardContent>
-                </Card>
-              ))}
+                </Card>)}
             </div>
           </TabsContent>
 
@@ -925,20 +865,32 @@ lopi`;
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
                       <Label>Název</Label>
-                      <Input placeholder="Např. Záhadný balíček" value={newItem.name} onChange={(e) => setNewItem({ ...newItem, name: e.target.value })} />
+                      <Input placeholder="Např. Záhadný balíček" value={newItem.name} onChange={e => setNewItem({
+                      ...newItem,
+                      name: e.target.value
+                    })} />
                     </div>
                     <div className="space-y-2">
                       <Label>Popis (volitelné)</Label>
-                      <Textarea placeholder="Popis položky..." value={newItem.description} onChange={(e) => setNewItem({ ...newItem, description: e.target.value })} />
+                      <Textarea placeholder="Popis položky..." value={newItem.description} onChange={e => setNewItem({
+                      ...newItem,
+                      description: e.target.value
+                    })} />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Cena (body)</Label>
-                        <Input type="number" min="0" placeholder="100" value={newItem.price} onChange={(e) => setNewItem({ ...newItem, price: e.target.value })} />
+                        <Input type="number" min="0" placeholder="100" value={newItem.price} onChange={e => setNewItem({
+                        ...newItem,
+                        price: e.target.value
+                      })} />
                       </div>
                       <div className="space-y-2">
                         <Label>Skladem (prázdné = neomezeně)</Label>
-                        <Input type="number" min="0" placeholder="Neomezeně" value={newItem.stock} onChange={(e) => setNewItem({ ...newItem, stock: e.target.value })} />
+                        <Input type="number" min="0" placeholder="Neomezeně" value={newItem.stock} onChange={e => setNewItem({
+                        ...newItem,
+                        stock: e.target.value
+                      })} />
                       </div>
                     </div>
                   </div>
@@ -960,17 +912,13 @@ lopi`;
               </TabsList>
 
               <TabsContent value="items" className="mt-4">
-                {shopItems.length === 0 ? (
-                  <Card className="text-center py-12">
+                {shopItems.length === 0 ? <Card className="text-center py-12">
                     <CardContent>
                       <Package className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                       <p className="text-muted-foreground">Žádné položky v obchůdku</p>
                     </CardContent>
-                  </Card>
-                ) : (
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {shopItems.map((item) => (
-                      <Card key={item.id} className={`shadow-card ${!item.is_active ? 'opacity-60' : ''}`}>
+                  </Card> : <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {shopItems.map(item => <Card key={item.id} className={`shadow-card ${!item.is_active ? 'opacity-60' : ''}`}>
                         <CardHeader className="pb-2">
                           <div className="flex items-start justify-between gap-2">
                             <CardTitle className="text-lg">{item.name}</CardTitle>
@@ -988,7 +936,15 @@ lopi`;
                               {item.is_active ? <ToggleRight className="w-4 h-4 mr-1" /> : <ToggleLeft className="w-4 h-4 mr-1" />}
                               {item.is_active ? 'Skrýt' : 'Aktivovat'}
                             </Button>
-                            <Button variant="outline" size="icon" onClick={() => { setItemToEdit(item); setEditedItem({ name: item.name, description: item.description || '', price: item.price.toString(), stock: item.stock?.toString() || '' }); }}>
+                            <Button variant="outline" size="icon" onClick={() => {
+                        setItemToEdit(item);
+                        setEditedItem({
+                          name: item.name,
+                          description: item.description || '',
+                          price: item.price.toString(),
+                          stock: item.stock?.toString() || ''
+                        });
+                      }}>
                               <Edit className="w-4 h-4" />
                             </Button>
                             <Button variant="outline" size="icon" onClick={() => handleDeleteShopItem(item.id)}>
@@ -996,24 +952,18 @@ lopi`;
                             </Button>
                           </div>
                         </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
+                      </Card>)}
+                  </div>}
               </TabsContent>
 
               <TabsContent value="orders" className="mt-4">
-                {purchases.length === 0 ? (
-                  <Card className="text-center py-12">
+                {purchases.length === 0 ? <Card className="text-center py-12">
                     <CardContent>
                       <ShoppingBag className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                       <p className="text-muted-foreground">Žádné objednávky</p>
                     </CardContent>
-                  </Card>
-                ) : (
-                  <div className="space-y-3">
-                    {purchases.map((purchase) => (
-                      <Card key={purchase.id} className="shadow-card">
+                  </Card> : <div className="space-y-3">
+                    {purchases.map(purchase => <Card key={purchase.id} className="shadow-card">
                         <CardContent className="pt-4">
                           <div className="flex items-center justify-between gap-4 flex-wrap">
                             <div>
@@ -1024,7 +974,7 @@ lopi`;
                             </div>
                             <div className="flex items-center gap-2">
                               <Badge className="bg-success/10 text-success">{purchase.total_price} bodů</Badge>
-                              <Select value={purchase.status} onValueChange={(value) => handleUpdatePurchaseStatus(purchase.id, value)}>
+                              <Select value={purchase.status} onValueChange={value => handleUpdatePurchaseStatus(purchase.id, value)}>
                                 <SelectTrigger className="w-32">
                                   <SelectValue />
                                 </SelectTrigger>
@@ -1037,10 +987,8 @@ lopi`;
                             </div>
                           </div>
                         </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
+                      </Card>)}
+                  </div>}
               </TabsContent>
             </Tabs>
           </TabsContent>
@@ -1052,8 +1000,7 @@ lopi`;
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {users.map((u) => (
-                <Card key={u.id} className="shadow-card">
+              {users.map(u => <Card key={u.id} className="shadow-card">
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-lg"><UserBadge username={u.username} roles={u.roles} /></CardTitle>
@@ -1062,71 +1009,55 @@ lopi`;
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="flex flex-wrap gap-1">
-                      {u.roles.map((role) => (
-                        <Badge 
-                          key={role} 
-                          className={getRoleBadgeColor(role)}
-                        >
+                      {u.roles.map(role => <Badge key={role} className={getRoleBadgeColor(role)}>
                           {getRoleDisplayName(role)}
-                          {role !== 'user' && (
-                            <button 
-                              onClick={() => handleRemoveRole(u.id, role)} 
-                              className="ml-1 hover:text-destructive"
-                              disabled={processing}
-                            >
+                          {role !== 'user' && <button onClick={() => handleRemoveRole(u.id, role)} className="ml-1 hover:text-destructive" disabled={processing}>
                               ×
-                            </button>
-                          )}
-                        </Badge>
-                      ))}
+                            </button>}
+                        </Badge>)}
                     </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full gap-2"
-                      onClick={() => setSelectedUserForRole(u)}
-                    >
+                    <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => setSelectedUserForRole(u)}>
                       <UserPlus className="w-4 h-4" />
                       Přidat roli
                     </Button>
                   </CardContent>
-                </Card>
-              ))}
+                </Card>)}
             </div>
           </TabsContent>
         </Tabs>
 
         {/* Publish Article Dialog */}
-        <Dialog open={!!selectedArticleForPublish} onOpenChange={(open) => { if (!open) { setSelectedArticleForPublish(null); setPublishMessage(''); } }}>
+        <Dialog open={!!selectedArticleForPublish} onOpenChange={open => {
+        if (!open) {
+          setSelectedArticleForPublish(null);
+          setPublishMessage('');
+        }
+      }}>
           <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle className="flex items-center gap-2"><Coins className="w-5 h-5 text-primary" />Publikovat článek</DialogTitle></DialogHeader>
-            {selectedArticleForPublish && (
-              <div className="space-y-4 py-4">
+            {selectedArticleForPublish && <div className="space-y-4 py-4">
                 <div className="p-4 bg-muted rounded-lg">
                   <p className="font-medium">{selectedArticleForPublish.title}</p>
                   <p className="text-sm text-muted-foreground">@{selectedArticleForPublish.author_username}</p>
                 </div>
                 <div className="space-y-2">
                   <Label>Bodová odměna</Label>
-                  <Input type="number" min="0" value={pointsToAward} onChange={(e) => {
-                    setPointsToAward(e.target.value);
-                    const stats = calculateRatingStats(selectedArticleForPublish.article_ratings || []);
-                    setPublishMessage(generatePublishMessage(parseInt(e.target.value) || 0, stats.averageRating));
-                  }} />
+                  <Input type="number" min="0" value={pointsToAward} onChange={e => {
+                setPointsToAward(e.target.value);
+                const stats = calculateRatingStats(selectedArticleForPublish.article_ratings || []);
+                setPublishMessage(generatePublishMessage(parseInt(e.target.value) || 0, stats.averageRating));
+              }} />
                 </div>
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2"><Mail className="w-4 h-4" />Zpráva pro autora (volitelné)</Label>
-                  <Textarea 
-                    value={publishMessage} 
-                    onChange={(e) => setPublishMessage(e.target.value)} 
-                    rows={6}
-                    placeholder="Zpráva bude odeslána autorovi článku..."
-                  />
+                  <Textarea value={publishMessage} onChange={e => setPublishMessage(e.target.value)} rows={6} placeholder="Zpráva bude odeslána autorovi článku..." />
                 </div>
-              </div>
-            )}
+              </div>}
             <DialogFooter>
-              <Button variant="ghost" onClick={() => { setSelectedArticleForPublish(null); setPublishMessage(''); }}>Zrušit</Button>
+              <Button variant="ghost" onClick={() => {
+              setSelectedArticleForPublish(null);
+              setPublishMessage('');
+            }}>Zrušit</Button>
               <Button variant="hero" onClick={handlePublishWithPoints} disabled={processing}>
                 {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 <span className="ml-2">Publikovat a odeslat</span>
@@ -1136,11 +1067,10 @@ lopi`;
         </Dialog>
 
         {/* Resolve Game Dialog */}
-        <Dialog open={!!selectedGameForResolve} onOpenChange={(open) => !open && setSelectedGameForResolve(null)}>
+        <Dialog open={!!selectedGameForResolve} onOpenChange={open => !open && setSelectedGameForResolve(null)}>
           <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle className="flex items-center gap-2"><Trophy className="w-5 h-5 text-primary" />Ukončit tipovačku</DialogTitle></DialogHeader>
-            {selectedGameForResolve && (
-              <div className="space-y-4 py-4">
+            {selectedGameForResolve && <div className="space-y-4 py-4">
                 <div className="p-4 bg-muted rounded-lg">
                   <p className="font-medium">{selectedGameForResolve.title}</p>
                   <p className="text-sm text-muted-foreground">{selectedGameForResolve.question}</p>
@@ -1148,36 +1078,27 @@ lopi`;
 
                 <div className="space-y-2">
                   <Label>Správná odpověď (volitelné)</Label>
-                  <Input placeholder="Např. 42" value={correctAnswer} onChange={(e) => setCorrectAnswer(e.target.value)} />
+                  <Input placeholder="Např. 42" value={correctAnswer} onChange={e => setCorrectAnswer(e.target.value)} />
                 </div>
 
                 <div className="space-y-2">
                   <Label>Vyber vítěze</Label>
                   <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {selectedGameForResolve.tips?.map((tip) => (
-                      <div 
-                        key={tip.id} 
-                        className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedWinnerId === tip.user_id ? 'border-primary bg-primary/10' : 'hover:bg-muted'}`}
-                        onClick={() => setSelectedWinnerId(tip.user_id)}
-                      >
+                    {selectedGameForResolve.tips?.map(tip => <div key={tip.id} className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedWinnerId === tip.user_id ? 'border-primary bg-primary/10' : 'hover:bg-muted'}`} onClick={() => setSelectedWinnerId(tip.user_id)}>
                         <div className="flex items-center justify-between">
                           <span className="font-medium">@{tip.username}</span>
                           <Badge variant="secondary">{tip.tip}</Badge>
                         </div>
-                      </div>
-                    ))}
-                    {(!selectedGameForResolve.tips || selectedGameForResolve.tips.length === 0) && (
-                      <p className="text-sm text-muted-foreground text-center py-4">Žádné tipy</p>
-                    )}
+                      </div>)}
+                    {(!selectedGameForResolve.tips || selectedGameForResolve.tips.length === 0) && <p className="text-sm text-muted-foreground text-center py-4">Žádné tipy</p>}
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label>Body pro vítěze</Label>
-                  <Input type="number" min="0" value={gamePoints} onChange={(e) => setGamePoints(e.target.value)} />
+                  <Input type="number" min="0" value={gamePoints} onChange={e => setGamePoints(e.target.value)} />
                 </div>
-              </div>
-            )}
+              </div>}
             <DialogFooter>
               <Button variant="ghost" onClick={() => setSelectedGameForResolve(null)}>Zrušit</Button>
               <Button variant="hero" onClick={handleResolveGame} disabled={processing || !selectedWinnerId}>{processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trophy className="w-4 h-4" />}<span className="ml-2">Ukončit a odměnit</span></Button>
@@ -1186,19 +1107,17 @@ lopi`;
         </Dialog>
 
         {/* Delete Article Dialog */}
-        <Dialog open={!!articleToDelete} onOpenChange={(open) => !open && setArticleToDelete(null)}>
+        <Dialog open={!!articleToDelete} onOpenChange={open => !open && setArticleToDelete(null)}>
           <DialogContent>
             <DialogHeader><DialogTitle className="flex items-center gap-2 text-destructive"><Trash2 className="w-5 h-5" />Smazat článek</DialogTitle></DialogHeader>
-            {articleToDelete && (
-              <div className="space-y-4 py-4">
+            {articleToDelete && <div className="space-y-4 py-4">
                 <p className="text-muted-foreground">Opravdu chceš smazat tento článek? Tato akce je nevratná.</p>
                 <div className="p-4 bg-muted rounded-lg">
                   <p className="font-medium">{articleToDelete.title}</p>
                   <p className="text-sm text-muted-foreground">@{articleToDelete.author_username}</p>
                   <Badge className="mt-2">{articleToDelete.status}</Badge>
                 </div>
-              </div>
-            )}
+              </div>}
             <DialogFooter>
               <Button variant="ghost" onClick={() => setArticleToDelete(null)}>Zrušit</Button>
               <Button variant="destructive" onClick={handleDeleteArticle} disabled={processing}>
@@ -1210,17 +1129,14 @@ lopi`;
         </Dialog>
 
         {/* Assign Role Dialog */}
-        <Dialog open={!!selectedUserForRole} onOpenChange={(open) => !open && setSelectedUserForRole(null)}>
+        <Dialog open={!!selectedUserForRole} onOpenChange={open => !open && setSelectedUserForRole(null)}>
           <DialogContent>
             <DialogHeader><DialogTitle className="flex items-center gap-2"><Crown className="w-5 h-5 text-primary" />Přidat roli</DialogTitle></DialogHeader>
-            {selectedUserForRole && (
-              <div className="space-y-4 py-4">
+            {selectedUserForRole && <div className="space-y-4 py-4">
                 <div className="p-4 bg-muted rounded-lg">
                   <p className="font-medium">@{selectedUserForRole.username}</p>
                   <div className="flex gap-1 mt-2">
-                    {selectedUserForRole.roles.map((role) => (
-                      <Badge key={role} variant="secondary">{role}</Badge>
-                    ))}
+                    {selectedUserForRole.roles.map(role => <Badge key={role} variant="secondary">{role}</Badge>)}
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -1235,8 +1151,7 @@ lopi`;
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-            )}
+              </div>}
             <DialogFooter>
               <Button variant="ghost" onClick={() => setSelectedUserForRole(null)}>Zrušit</Button>
               <Button variant="hero" onClick={handleAssignRole} disabled={processing || !newRole}>
@@ -1248,32 +1163,31 @@ lopi`;
         </Dialog>
 
         {/* Edit Article Dialog */}
-        <Dialog open={!!articleToEdit} onOpenChange={(open) => { if (!open) { setArticleToEdit(null); setEditedTitle(''); setEditedContent(''); } }}>
+        <Dialog open={!!articleToEdit} onOpenChange={open => {
+        if (!open) {
+          setArticleToEdit(null);
+          setEditedTitle('');
+          setEditedContent('');
+        }
+      }}>
           <DialogContent className="max-w-2xl">
             <DialogHeader><DialogTitle className="flex items-center gap-2"><Edit className="w-5 h-5 text-primary" />Upravit článek</DialogTitle></DialogHeader>
-            {articleToEdit && (
-              <div className="space-y-4 py-4">
+            {articleToEdit && <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label>Název článku</Label>
-                  <Input 
-                    value={editedTitle} 
-                    onChange={(e) => setEditedTitle(e.target.value)} 
-                    placeholder="Název článku"
-                  />
+                  <Input value={editedTitle} onChange={e => setEditedTitle(e.target.value)} placeholder="Název článku" />
                 </div>
                 <div className="space-y-2">
                   <Label>Obsah článku</Label>
-                  <Textarea 
-                    value={editedContent} 
-                    onChange={(e) => setEditedContent(e.target.value)} 
-                    rows={12}
-                    placeholder="Obsah článku..."
-                  />
+                  <Textarea value={editedContent} onChange={e => setEditedContent(e.target.value)} rows={12} placeholder="Obsah článku..." />
                 </div>
-              </div>
-            )}
+              </div>}
             <DialogFooter>
-              <Button variant="ghost" onClick={() => { setArticleToEdit(null); setEditedTitle(''); setEditedContent(''); }}>Zrušit</Button>
+              <Button variant="ghost" onClick={() => {
+              setArticleToEdit(null);
+              setEditedTitle('');
+              setEditedContent('');
+            }}>Zrušit</Button>
               <Button variant="hero" onClick={handleEditArticle} disabled={processing}>
                 {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
                 <span className="ml-2">Uložit změny</span>
@@ -1283,31 +1197,41 @@ lopi`;
         </Dialog>
 
         {/* Edit Shop Item Dialog */}
-        <Dialog open={!!itemToEdit} onOpenChange={(open) => !open && setItemToEdit(null)}>
+        <Dialog open={!!itemToEdit} onOpenChange={open => !open && setItemToEdit(null)}>
           <DialogContent>
             <DialogHeader><DialogTitle className="flex items-center gap-2"><Edit className="w-5 h-5 text-primary" />Upravit položku</DialogTitle></DialogHeader>
-            {itemToEdit && (
-              <div className="space-y-4 py-4">
+            {itemToEdit && <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label>Název</Label>
-                  <Input value={editedItem.name} onChange={(e) => setEditedItem({ ...editedItem, name: e.target.value })} />
+                  <Input value={editedItem.name} onChange={e => setEditedItem({
+                ...editedItem,
+                name: e.target.value
+              })} />
                 </div>
                 <div className="space-y-2">
                   <Label>Popis</Label>
-                  <Textarea value={editedItem.description} onChange={(e) => setEditedItem({ ...editedItem, description: e.target.value })} />
+                  <Textarea value={editedItem.description} onChange={e => setEditedItem({
+                ...editedItem,
+                description: e.target.value
+              })} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Cena (body)</Label>
-                    <Input type="number" min="0" value={editedItem.price} onChange={(e) => setEditedItem({ ...editedItem, price: e.target.value })} />
+                    <Input type="number" min="0" value={editedItem.price} onChange={e => setEditedItem({
+                  ...editedItem,
+                  price: e.target.value
+                })} />
                   </div>
                   <div className="space-y-2">
                     <Label>Skladem</Label>
-                    <Input type="number" min="0" placeholder="Neomezeně" value={editedItem.stock} onChange={(e) => setEditedItem({ ...editedItem, stock: e.target.value })} />
+                    <Input type="number" min="0" placeholder="Neomezeně" value={editedItem.stock} onChange={e => setEditedItem({
+                  ...editedItem,
+                  stock: e.target.value
+                })} />
                   </div>
                 </div>
-              </div>
-            )}
+              </div>}
             <DialogFooter>
               <Button variant="ghost" onClick={() => setItemToEdit(null)}>Zrušit</Button>
               <Button variant="hero" onClick={handleUpdateShopItem} disabled={processing}>
@@ -1318,6 +1242,5 @@ lopi`;
           </DialogContent>
         </Dialog>
       </div>
-    </div>
-  );
+    </div>;
 }
