@@ -14,7 +14,7 @@ import Obchudek from "./pages/Obchudek";
 import Admin from "./pages/Admin";
 import Posta from "./pages/Posta";
 import NotFound from "./pages/NotFound";
-import PravidlaOchranaOU from "./pages/PravidlaOchranaOU";
+import PravidlaOchranaOU from "./pages/pravidla-ochrana-ou";
 
 const queryClient = new QueryClient();
 
@@ -33,7 +33,7 @@ const App = () => (
             <Route path="/fotosoutez" element={<Layout><Fotosoutez /></Layout>} />
             <Route path="/obchudek" element={<Layout><Obchudek /></Layout>} />
             <Route path="/admin" element={<Layout><Admin /></Layout>} />
-            <Route path="/pou" element={<Layout><PravidlaOchranaOU /></Layout>} />
+            <Route path="/pravidla-ochrana-ou" element={<Layout><PravidlaOchranaOU /></Layout>} />
             <Route path="/posta" element={<Layout><Posta /></Layout>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
