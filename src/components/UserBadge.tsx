@@ -1,10 +1,12 @@
 import { cn } from '@/lib/utils';
+import { Link } from 'react-router-dom';
 
 interface UserBadgeProps {
   username: string;
   roles?: string[];
   className?: string;
   showAt?: boolean;
+  linkToProfile?: boolean;
 }
 
 // Helper function to get role display info
@@ -32,29 +34,35 @@ export const getRoleBadgeColor = (role: string): string => {
   }
 };
 
-// Butterfly component
-const Butterfly = ({ color }: { color: 'yellow' | 'red' }) => (
+// Crown component
+const Crown = ({ color }: { color: 'orange' | 'pink' }) => (
   <svg
     viewBox="0 0 24 24"
     className={cn(
       "w-4 h-4 inline-block ml-1",
-      color === 'yellow' ? 'text-yellow-500' : 'text-red-500'
+      color === 'orange' ? 'text-primary' : 'text-pink-400'
     )}
     fill="currentColor"
   >
-    <path d="M12 12c-1.5-3-4-5-7-6 0 3 1 5 3 6.5-2 0-4 1-5 3 3 1 5 0 7-2 0 2 1 4 2 6 1-2 2-4 2-6 2 2 4 3 7 2-1-2-3-3-5-3 2-1.5 3-3.5 3-6.5-3 1-5.5 3-7 6z"/>
+    <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/>
   </svg>
 );
 
-export default function UserBadge({ username, roles = [], className, showAt = true }: UserBadgeProps) {
+export default function UserBadge({ username, roles = [], className, showAt = true, linkToProfile = true }: UserBadgeProps) {
   const isOrganizer = roles.includes('organizer');
   const isHelper = roles.includes('helper');
 
-  return (
-    <span className={cn("inline-flex items-center", className)}>
+  const content = (
+    <span className={cn("inline-flex items-center", linkToProfile && "hover:text-primary transition-colors", className)}>
       {showAt && '@'}{username}
-      {isOrganizer && <Butterfly color="yellow" />}
-      {isHelper && !isOrganizer && <Butterfly color="red" />}
+      {isOrganizer && <Crown color="orange" />}
+      {isHelper && !isOrganizer && <Crown color="pink" />}
     </span>
   );
+
+  if (linkToProfile) {
+    return <Link to={`/u/${username}`}>{content}</Link>;
+  }
+
+  return content;
 }
