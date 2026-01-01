@@ -13,6 +13,7 @@ import Fotosoutez from "./pages/Fotosoutez";
 import Obchudek from "./pages/Obchudek";
 import Admin from "./pages/Admin";
 import Posta from "./pages/Posta";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import PravidlaOchranaOU from "./pages/PravidlaOchranaOU";
 
@@ -35,6 +36,7 @@ const App = () => (
             <Route path="/admin" element={<Layout><Admin /></Layout>} />
             <Route path="/pravidla-ochrana-ou" element={<Layout><PravidlaOchranaOU /></Layout>} />
             <Route path="/posta" element={<Layout><Posta /></Layout>} />
+            <Route path="/u/:username" element={<Layout><Profile /></Layout>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

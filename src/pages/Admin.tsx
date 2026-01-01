@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { calculateRatingStats, getRatingQuality } from '@/lib/points';
 import RatingDisplay from '@/components/RatingDisplay';
 import UserBadge, { getRoleDisplayName, getRoleBadgeColor } from '@/components/UserBadge';
+import SendMessage from '@/components/SendMessage';
 import { FileText, CheckCircle, XCircle, Star, Loader2, Coins, Clock, AlertTriangle, Sparkles, TrendingUp, HelpCircle, Plus, Image as ImageIcon, Trophy, Users, Trash2, UserPlus, Crown, Edit, Mail, Send, ShoppingBag, Package, ToggleLeft, ToggleRight, Award } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
