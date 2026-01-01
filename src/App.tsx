@@ -14,7 +14,7 @@ import Obchudek from "./pages/Obchudek";
 import Admin from "./pages/Admin";
 import Posta from "./pages/Posta";
 import NotFound from "./pages/NotFound";
-import PravidlaOchranaOU from "./pages/pravidla-ochrana-ou";
+import PravidlaOchranaOU from "./pages/PravidlaOchranaOU";
 
 const queryClient = new QueryClient();
 
