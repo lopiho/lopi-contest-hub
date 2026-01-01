@@ -75,6 +75,14 @@ interface Purchase {
   username?: string;
   item_name?: string;
 }
+interface DeletionRequest {
+  id: string;
+  user_id: string;
+  reason: string | null;
+  status: string;
+  created_at: string;
+  username?: string;
+}
 export default function Admin() {
   const {
     user,
@@ -135,6 +143,10 @@ export default function Admin() {
     price: '',
     stock: ''
   });
+
+  // Deletion requests
+  const [deletionRequests, setDeletionRequests] = useState<DeletionRequest[]>([]);
+  const [requestToProcess, setRequestToProcess] = useState<DeletionRequest | null>(null);
   useEffect(() => {
     if (user) {
       checkRole();
@@ -154,7 +166,7 @@ export default function Admin() {
   };
   const fetchData = async () => {
     setLoading(true);
-    await Promise.all([fetchArticles(), fetchGames(), fetchUsers(), fetchShopData()]);
+    await Promise.all([fetchArticles(), fetchGames(), fetchUsers(), fetchShopData(), fetchDeletionRequests()]);
     setLoading(false);
   };
   const fetchArticles = async () => {
@@ -244,6 +256,98 @@ export default function Admin() {
       }));
       setPurchases(mappedPurchases);
     }
+  };
+  const fetchDeletionRequests = async () => {
+    const { data: requestsData } = await supabase
+      .from('deletion_requests')
+      .select('*')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+    
+    if (requestsData && requestsData.length > 0) {
+      const userIds = [...new Set(requestsData.map(r => r.user_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .in('id', userIds);
+      
+      const profileMap = new Map(profiles?.map(p => [p.id, p.username]) || []);
+      const mapped = requestsData.map(r => ({
+        ...r,
+        username: profileMap.get(r.user_id) || 'Neznámý'
+      }));
+      setDeletionRequests(mapped);
+    } else {
+      setDeletionRequests([]);
+    }
+  };
+  const handleApproveDeletion = async () => {
+    if (!requestToProcess) return;
+    setProcessing(true);
+    
+    const userId = requestToProcess.user_id;
+    
+    // Delete user's articles
+    await supabase.from('articles').delete().eq('author_id', userId);
+    
+    // Delete user's tips
+    await supabase.from('guessing_tips').delete().eq('user_id', userId);
+    
+    // Delete user's ratings
+    await supabase.from('article_ratings').delete().eq('user_id', userId);
+    
+    // Delete user's messages
+    await supabase.from('messages').delete().eq('recipient_id', userId);
+    await supabase.from('messages').delete().eq('sender_id', userId);
+    
+    // Delete user's purchases
+    await supabase.from('purchases').delete().eq('user_id', userId);
+    
+    // Delete user's roles (except basic)
+    await supabase.from('user_roles').delete().eq('user_id', userId);
+    
+    // Reset user's profile to anonymous
+    await supabase.from('profiles').update({
+      username: 'smazany_uzivatel_' + userId.slice(0, 8),
+      points: 0,
+      avatar_url: null
+    }).eq('id', userId);
+    
+    // Update request status
+    await supabase.from('deletion_requests').update({
+      status: 'approved',
+      resolved_at: new Date().toISOString(),
+      resolved_by: user?.id
+    }).eq('id', requestToProcess.id);
+    
+    toast.success('Údaje uživatele byly smazány');
+    setRequestToProcess(null);
+    fetchDeletionRequests();
+    fetchUsers();
+    setProcessing(false);
+  };
+  const handleRejectDeletion = async () => {
+    if (!requestToProcess) return;
+    setProcessing(true);
+    
+    await supabase.from('deletion_requests').update({
+      status: 'rejected',
+      resolved_at: new Date().toISOString(),
+      resolved_by: user?.id
+    }).eq('id', requestToProcess.id);
+    
+    // Send message to user
+    await supabase.from('messages').insert({
+      sender_id: user?.id,
+      recipient_id: requestToProcess.user_id,
+      subject: 'Žádost o smazání údajů zamítnuta',
+      content: 'Vaše žádost o smazání osobních údajů byla zamítnuta. Pokud máte dotazy, kontaktujte organizátory.'
+    });
+    
+    toast.success('Žádost zamítnuta');
+    setRequestToProcess(null);
+    fetchDeletionRequests();
+    setProcessing(false);
   };
   const handleCreateShopItem = async () => {
     if (!newItem.name.trim()) {
@@ -672,6 +776,10 @@ lopi`;
             <TabsTrigger value="tipovacky" className="gap-2"><HelpCircle className="w-4 h-4" />Tipovačky</TabsTrigger>
             <TabsTrigger value="obchudek" className="gap-2"><ShoppingBag className="w-4 h-4" />Obchůdek</TabsTrigger>
             <TabsTrigger value="users" className="gap-2"><Crown className="w-4 h-4" />Uživatelé</TabsTrigger>
+            <TabsTrigger value="gdpr" className="gap-2">
+              <Trash2 className="w-4 h-4" />
+              GDPR {deletionRequests.length > 0 && <Badge variant="destructive" className="ml-1">{deletionRequests.length}</Badge>}
+            </TabsTrigger>
           </TabsList>
 
           {/* Articles Tab */}
@@ -1024,6 +1132,69 @@ lopi`;
                 </Card>)}
             </div>
           </TabsContent>
+
+          {/* GDPR Tab */}
+          <TabsContent value="gdpr" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-display font-bold">Žádosti o smazání údajů</h2>
+            </div>
+
+            {deletionRequests.length === 0 ? (
+              <Card className="text-center py-12">
+                <CardContent>
+                  <CheckCircle className="w-12 h-12 text-success mx-auto mb-4" />
+                  <p className="text-muted-foreground">Žádné čekající žádosti</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {deletionRequests.map(req => (
+                  <Card key={req.id} className="shadow-card border-destructive/30">
+                    <CardHeader>
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <CardTitle className="flex items-center gap-2">
+                            <AlertTriangle className="w-5 h-5 text-destructive" />
+                            @{req.username}
+                          </CardTitle>
+                          <CardDescription>
+                            Žádost z {new Date(req.created_at).toLocaleDateString('cs-CZ')}
+                          </CardDescription>
+                        </div>
+                        <Badge variant="destructive">Čeká na vyřízení</Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="bg-muted/50 rounded-lg p-4">
+                        <p className="text-sm font-medium mb-1">Důvod:</p>
+                        <p className="text-sm text-muted-foreground">{req.reason || 'Bez udání důvodu'}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="destructive" 
+                          className="flex-1" 
+                          onClick={() => setRequestToProcess(req)}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Smazat údaje
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          onClick={() => {
+                            setRequestToProcess(req);
+                            handleRejectDeletion();
+                          }}
+                          disabled={processing}
+                        >
+                          Zamítnout
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
         </Tabs>
 
         {/* Publish Article Dialog */}
@@ -1237,6 +1408,43 @@ lopi`;
               <Button variant="hero" onClick={handleUpdateShopItem} disabled={processing}>
                 {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
                 <span className="ml-2">Uložit</span>
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete User Data Dialog */}
+        <Dialog open={!!requestToProcess} onOpenChange={open => !open && setRequestToProcess(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-destructive" />
+                Potvrdit smazání údajů
+              </DialogTitle>
+            </DialogHeader>
+            {requestToProcess && (
+              <div className="space-y-4 py-4">
+                <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-lg">
+                  <p className="font-medium text-destructive">Tato akce je nevratná!</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Budou smazány všechny údaje uživatele @{requestToProcess.username}:
+                  </p>
+                  <ul className="text-sm text-muted-foreground mt-2 list-disc list-inside">
+                    <li>Články</li>
+                    <li>Tipy v tipovačkách</li>
+                    <li>Hodnocení</li>
+                    <li>Zprávy</li>
+                    <li>Objednávky</li>
+                    <li>Body a profil</li>
+                  </ul>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setRequestToProcess(null)}>Zrušit</Button>
+              <Button variant="destructive" onClick={handleApproveDeletion} disabled={processing}>
+                {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                <span className="ml-2">Smazat vše</span>
               </Button>
             </DialogFooter>
           </DialogContent>
