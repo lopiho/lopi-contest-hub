@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Mail, MailOpen, Loader2, Inbox as InboxIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cs } from 'date-fns/locale';
+import { LvZJContent } from '@/lib/lvzj-parser';
 
 interface Message {
   id: string;
@@ -150,8 +151,8 @@ export default function Inbox() {
                 <span>Od: {selectedMessage.sender_username}</span>
                 <span>{format(new Date(selectedMessage.created_at), 'd. M. yyyy HH:mm', { locale: cs })}</span>
               </div>
-              <div className="p-4 bg-muted rounded-lg whitespace-pre-wrap">
-                {selectedMessage.content}
+              <div className="p-4 bg-muted rounded-lg">
+                <LvZJContent content={selectedMessage.content} />
               </div>
             </div>
           )}
