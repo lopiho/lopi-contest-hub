@@ -14,7 +14,7 @@ import { calculateRatingStats, getRatingQuality } from '@/lib/points';
 import RatingDisplay from '@/components/RatingDisplay';
 import UserBadge, { getRoleDisplayName, getRoleBadgeColor } from '@/components/UserBadge';
 import SendMessage from '@/components/SendMessage';
-import { FileText, CheckCircle, XCircle, Star, Loader2, Coins, Clock, AlertTriangle, Sparkles, TrendingUp, HelpCircle, Plus, Image as ImageIcon, Trophy, Users, Trash2, UserPlus, Crown, Edit, Mail, Send, ShoppingBag, Package, ToggleLeft, ToggleRight, Award } from 'lucide-react';
+import { FileText, CheckCircle, XCircle, Star, Loader2, Coins, Clock, AlertTriangle, Sparkles, TrendingUp, HelpCircle, Plus, Image as ImageIcon, Trophy, Users, Trash2, UserPlus, Crown, Edit, Mail, Send, ShoppingBag, Package, ToggleLeft, ToggleRight, Award, BookOpen, Download, RefreshCw, BarChart3 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Navigate } from 'react-router-dom';
@@ -148,6 +148,14 @@ export default function Admin() {
   // Deletion requests
   const [deletionRequests, setDeletionRequests] = useState<DeletionRequest[]>([]);
   const [requestToProcess, setRequestToProcess] = useState<DeletionRequest | null>(null);
+  
+  // New admin functions
+  const [exportingStats, setExportingStats] = useState(false);
+  const [broadcastOpen, setBroadcastOpen] = useState(false);
+  const [broadcastSubject, setBroadcastSubject] = useState('');
+  const [broadcastContent, setBroadcastContent] = useState('');
+  const [sendingBroadcast, setSendingBroadcast] = useState(false);
+  const [siteStatsOpen, setSiteStatsOpen] = useState(false);
   useEffect(() => {
     if (user) {
       checkRole();
@@ -721,6 +729,96 @@ lopi`;
   const pendingArticles = articles.filter(a => a.status === 'pending');
   const approvedArticles = articles.filter(a => a.status === 'approved' || a.status === 'rated');
   const activeGames = games.filter(g => g.status === 'active');
+
+  // ========== NEW ADMIN FUNCTIONS (5) ==========
+
+  // 1. Export statistics to JSON
+  const handleExportStats = async () => {
+    setExportingStats(true);
+    
+    const stats = {
+      exportedAt: new Date().toISOString(),
+      articles: {
+        total: articles.length,
+        pending: pendingArticles.length,
+        approved: approvedArticles.length,
+        published: articles.filter(a => a.status === 'published').length,
+        totalPointsAwarded: articles.reduce((s, a) => s + a.points_awarded, 0)
+      },
+      games: {
+        total: games.length,
+        active: activeGames.length,
+        resolved: games.filter(g => g.status === 'resolved').length,
+        totalPointsAwarded: games.filter(g => g.status === 'resolved').reduce((s, g) => s + g.points_awarded, 0)
+      },
+      users: {
+        total: users.length,
+        organizers: users.filter(u => u.roles.includes('organizer')).length,
+        helpers: users.filter(u => u.roles.includes('helper')).length,
+        totalPoints: users.reduce((s, u) => s + u.points, 0)
+      },
+      shop: {
+        items: shopItems.length,
+        activeItems: shopItems.filter(i => i.is_active).length,
+        purchases: purchases.length,
+        pendingPurchases: purchases.filter(p => p.status === 'pending').length
+      },
+      deletionRequests: deletionRequests.length
+    };
+    
+    const blob = new Blob([JSON.stringify(stats, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `lopik-stats-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    toast.success('Statistiky exportovány');
+    setExportingStats(false);
+  };
+
+  // 2. Broadcast message to all users
+  const handleBroadcast = async () => {
+    if (!broadcastSubject.trim() || !broadcastContent.trim()) {
+      toast.error('Vyplňte předmět a obsah');
+      return;
+    }
+    
+    setSendingBroadcast(true);
+    
+    const messages = users.map(u => ({
+      sender_id: user?.id,
+      recipient_id: u.id,
+      subject: broadcastSubject.trim(),
+      content: broadcastContent.trim()
+    }));
+    
+    const { error } = await supabase.from('messages').insert(messages);
+    
+    if (!error) {
+      toast.success(`Zpráva odeslána ${users.length} uživatelům`);
+      setBroadcastOpen(false);
+      setBroadcastSubject('');
+      setBroadcastContent('');
+    } else {
+      toast.error('Chyba při odesílání');
+    }
+    setSendingBroadcast(false);
+  };
+
+  // 3. Refresh all data
+  const handleRefreshData = () => {
+    fetchData();
+    toast.success('Data aktualizována');
+  };
+
+  // 4. Open LvZJ docs
+  const handleOpenLvzjDocs = () => {
+    window.open('/lvzj', '_blank');
+  };
+
+  // 5. View site stats (computed inline below)
   if (authLoading || checkingRole) {
     return <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
   }
@@ -746,7 +844,108 @@ lopi`;
               Admin Panel
             </h1>
           </div>
-          <SendMessage />
+          <div className="flex flex-wrap gap-2">
+            {/* 1. Export stats */}
+            <Button variant="outline" size="sm" onClick={handleExportStats} disabled={exportingStats}>
+              {exportingStats ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Download className="w-4 h-4 mr-1" />}
+              Export
+            </Button>
+            
+            {/* 2. Broadcast message */}
+            <Dialog open={broadcastOpen} onOpenChange={setBroadcastOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Send className="w-4 h-4 mr-1" />
+                  Broadcast
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Odeslat zprávu všem ({users.length} uživatelů)</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Předmět</Label>
+                    <Input 
+                      value={broadcastSubject} 
+                      onChange={(e) => setBroadcastSubject(e.target.value)}
+                      placeholder="Předmět zprávy..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Obsah (podporuje LvZJ)</Label>
+                    <Textarea 
+                      value={broadcastContent} 
+                      onChange={(e) => setBroadcastContent(e.target.value)}
+                      placeholder="Obsah zprávy..."
+                      rows={4}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button onClick={handleBroadcast} disabled={sendingBroadcast}>
+                    {sendingBroadcast ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Send className="w-4 h-4 mr-1" />}
+                    Odeslat všem
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+            
+            {/* 3. Refresh data */}
+            <Button variant="outline" size="sm" onClick={handleRefreshData}>
+              <RefreshCw className="w-4 h-4 mr-1" />
+              Obnovit
+            </Button>
+            
+            {/* 4. LvZJ docs */}
+            <Button variant="outline" size="sm" onClick={handleOpenLvzjDocs}>
+              <BookOpen className="w-4 h-4 mr-1" />
+              LvZJ
+            </Button>
+            
+            {/* 5. Site stats dialog */}
+            <Dialog open={siteStatsOpen} onOpenChange={setSiteStatsOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <BarChart3 className="w-4 h-4 mr-1" />
+                  Statistiky
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Statistiky webu</DialogTitle>
+                </DialogHeader>
+                <div className="grid grid-cols-2 gap-4 py-4">
+                  <div className="p-3 bg-muted/50 rounded-lg text-center">
+                    <div className="text-2xl font-bold">{users.length}</div>
+                    <div className="text-xs text-muted-foreground">Uživatelů</div>
+                  </div>
+                  <div className="p-3 bg-muted/50 rounded-lg text-center">
+                    <div className="text-2xl font-bold">{articles.length}</div>
+                    <div className="text-xs text-muted-foreground">Článků</div>
+                  </div>
+                  <div className="p-3 bg-muted/50 rounded-lg text-center">
+                    <div className="text-2xl font-bold">{games.length}</div>
+                    <div className="text-xs text-muted-foreground">Tipovačky</div>
+                  </div>
+                  <div className="p-3 bg-muted/50 rounded-lg text-center">
+                    <div className="text-2xl font-bold">{purchases.length}</div>
+                    <div className="text-xs text-muted-foreground">Objednávek</div>
+                  </div>
+                  <div className="p-3 bg-muted/50 rounded-lg text-center">
+                    <div className="text-2xl font-bold">{users.reduce((s, u) => s + u.points, 0)}</div>
+                    <div className="text-xs text-muted-foreground">Celkem bodů</div>
+                  </div>
+                  <div className="p-3 bg-muted/50 rounded-lg text-center">
+                    <div className="text-2xl font-bold">{shopItems.filter(i => i.is_active).length}</div>
+                    <div className="text-xs text-muted-foreground">Aktivní položky</div>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+            
+            <SendMessage />
+          </div>
         </div>
 
         {/* Stats */}

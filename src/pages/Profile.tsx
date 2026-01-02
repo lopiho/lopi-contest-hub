@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Star, Trophy, FileText, MessageCircle, Edit2, Save, X, Mail, Send, Crown, Coins, Trash2, UserPlus, Key, Eye, EyeOff, ShoppingBag, AlertTriangle } from 'lucide-react';
+import { Loader2, Star, Trophy, FileText, MessageCircle, Edit2, Save, X, Mail, Send, Crown, Coins, Trash2, UserPlus, Key, Eye, EyeOff, ShoppingBag, AlertTriangle, Copy, Settings, BookOpen, History, Bell, Lock, Download, Ban, Flag, ClipboardList, UserCheck, RefreshCw, BarChart3 } from 'lucide-react';
 import UserBadge, { getRoleDisplayName, getRoleBadgeColor } from '@/components/UserBadge';
 import { LvZJContent } from '@/lib/lvzj-parser';
 import { toast } from 'sonner';
@@ -87,6 +87,21 @@ export default function Profile() {
   const [changeRoleOpen, setChangeRoleOpen] = useState(false);
   const [newRole, setNewRole] = useState('');
   const [changingRole, setChangingRole] = useState(false);
+  
+  // New owner states
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [exportingData, setExportingData] = useState(false);
+  
+  // New organizer states
+  const [showUserPurchases, setShowUserPurchases] = useState(false);
+  const [userPurchases, setUserPurchases] = useState<any[]>([]);
+  const [showUserMessages, setShowUserMessages] = useState(false);
+  const [userMessages, setUserMessages] = useState<any[]>([]);
+  const [showBanDialog, setShowBanDialog] = useState(false);
+  const [banReason, setBanReason] = useState('');
+  const [resetPointsOpen, setResetPointsOpen] = useState(false);
+  const [loadingPurchases, setLoadingPurchases] = useState(false);
+  const [loadingMessages, setLoadingMessages] = useState(false);
 
   const isOwnProfile = user && profile && user.id === profile.id;
   const isOrganizer = viewerRoles.includes('organizer') || viewerRoles.includes('helper');
@@ -217,6 +232,57 @@ export default function Profile() {
     }
   };
 
+  // 7. Export personal data
+  const handleExportData = async () => {
+    if (!profile || !isOwnProfile) return;
+    setExportingData(true);
+    
+    const [articlesRes, ratingsRes, tipsRes, purchasesRes, messagesRes] = await Promise.all([
+      supabase.from('articles').select('*').eq('author_id', profile.id),
+      supabase.from('article_ratings').select('*').eq('user_id', profile.id),
+      supabase.from('guessing_tips').select('*').eq('user_id', profile.id),
+      supabase.from('purchases').select('*').eq('user_id', profile.id),
+      supabase.from('messages').select('*').eq('recipient_id', profile.id),
+    ]);
+    
+    const exportData = {
+      profile: { username: profile.username, points: profile.points, bio: profile.bio, created_at: profile.created_at },
+      articles: articlesRes.data || [],
+      ratings: ratingsRes.data || [],
+      tips: tipsRes.data || [],
+      purchases: purchasesRes.data || [],
+      messages: messagesRes.data || [],
+      exported_at: new Date().toISOString()
+    };
+    
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `lopik-data-${profile.username}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    toast.success('Data exportována');
+    setExportingData(false);
+  };
+
+  // 8. Open LvZJ documentation
+  const handleOpenLvzjDocs = () => {
+    window.open('/lvzj', '_blank');
+  };
+
+  // 9. Toggle email notifications (placeholder)
+  const handleToggleNotifications = () => {
+    setNotificationsEnabled(!notificationsEnabled);
+    toast.success(notificationsEnabled ? 'Upozornění vypnuta' : 'Upozornění zapnuta');
+  };
+
+  // 10. View profile in new tab
+  const handleOpenInNewTab = () => {
+    window.open(window.location.href, '_blank');
+  };
+
   // ============ ORGANIZER FUNCTIONS (8) ============
   
   // 1. Send message to user
@@ -320,16 +386,95 @@ export default function Profile() {
     setNewRole('');
   };
 
-  // 4. View user's articles (already shown)
-  
-  // 5. View user's purchases count (already in stats)
-  
-  // 6. View user's messages count (already in stats)
-  
-  // 7. View games won (already in stats)
-  
-  // 8. Quick link to user management
-  // (go to admin panel with user preselected)
+  // 4. View user's purchases
+  const handleViewUserPurchases = async () => {
+    if (!profile) return;
+    setLoadingPurchases(true);
+    setShowUserPurchases(true);
+    
+    const { data } = await supabase
+      .from('purchases')
+      .select('*, shop_items(name)')
+      .eq('user_id', profile.id)
+      .order('created_at', { ascending: false });
+    
+    setUserPurchases(data || []);
+    setLoadingPurchases(false);
+  };
+
+  // 5. View user's messages
+  const handleViewUserMessages = async () => {
+    if (!profile) return;
+    setLoadingMessages(true);
+    setShowUserMessages(true);
+    
+    const { data } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('recipient_id', profile.id)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    
+    setUserMessages(data || []);
+    setLoadingMessages(false);
+  };
+
+  // 6. Reset user points
+  const handleResetPoints = async () => {
+    if (!profile) return;
+    setAddingPoints(true);
+    
+    const { error } = await supabase
+      .from('profiles')
+      .update({ points: 0 })
+      .eq('id', profile.id);
+    
+    if (!error) {
+      setProfile({ ...profile, points: 0 });
+      toast.success('Body vynulovány');
+      setResetPointsOpen(false);
+    } else {
+      toast.error('Chyba při nulování bodů');
+    }
+    setAddingPoints(false);
+  };
+
+  // 7. Send warning message
+  const handleSendWarning = async () => {
+    if (!profile || !banReason.trim()) {
+      toast.error('Vyplňte důvod varování');
+      return;
+    }
+    
+    const { error } = await supabase.from('messages').insert({
+      sender_id: user?.id,
+      recipient_id: profile.id,
+      subject: '⚠️ Varování od organizátora',
+      content: banReason.trim(),
+    });
+    
+    if (!error) {
+      toast.success('Varování odesláno');
+      setShowBanDialog(false);
+      setBanReason('');
+    } else {
+      toast.error('Chyba při odesílání');
+    }
+  };
+
+  // 8. Copy user ID
+  const handleCopyUserId = () => {
+    if (!profile) return;
+    navigator.clipboard.writeText(profile.id);
+    toast.success('ID uživatele zkopírováno');
+  };
+
+  // 9. View user activity summary
+  const handleViewActivity = () => {
+    toast.info(`Aktivita: ${stats.articlesCount} článků, ${stats.gamesParticipated} tipů, ${stats.purchasesCount} nákupů`);
+  };
+
+  // 10-12. Additional org functions are in buttons
 
   if (loading) {
     return (
@@ -398,17 +543,49 @@ export default function Profile() {
               </div>
             </div>
 
-            {/* Owner actions */}
+            {/* Owner actions - 10 functions */}
             {isOwnProfile && (
               <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t">
+                {/* 1. Copy profile link */}
                 <Button variant="outline" size="sm" onClick={handleCopyProfileLink}>
+                  <Copy className="w-4 h-4 mr-1" />
                   Kopírovat odkaz
                 </Button>
+                
+                {/* 2. Export personal data */}
+                <Button variant="outline" size="sm" onClick={handleExportData} disabled={exportingData}>
+                  {exportingData ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />}
+                  Export dat
+                </Button>
+                
+                {/* 3. LvZJ documentation */}
+                <Button variant="outline" size="sm" onClick={handleOpenLvzjDocs}>
+                  <BookOpen className="w-4 h-4 mr-1" />
+                  Nápověda LvZJ
+                </Button>
+                
+                {/* 4. Toggle notifications */}
+                <Button 
+                  variant={notificationsEnabled ? "outline" : "secondary"} 
+                  size="sm" 
+                  onClick={handleToggleNotifications}
+                >
+                  {notificationsEnabled ? <Bell className="w-4 h-4 mr-1" /> : <Bell className="w-4 h-4 mr-1 opacity-50" />}
+                  {notificationsEnabled ? 'Upozornění zap.' : 'Upozornění vyp.'}
+                </Button>
+                
+                {/* 5. Open in new tab */}
+                <Button variant="outline" size="sm" onClick={handleOpenInNewTab}>
+                  <Eye className="w-4 h-4 mr-1" />
+                  Nová karta
+                </Button>
+                
+                {/* 6. Request data deletion */}
                 <Dialog>
                   <DialogTrigger asChild>
                     <Button variant="outline" size="sm" className="text-destructive">
                       <Trash2 className="w-4 h-4 mr-1" />
-                      Žádost o smazání účtu
+                      Žádost o smazání
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
@@ -566,10 +743,133 @@ export default function Profile() {
                   </DialogContent>
                 </Dialog>
 
+                {/* 4. View user purchases */}
+                <Dialog open={showUserPurchases} onOpenChange={setShowUserPurchases}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" onClick={handleViewUserPurchases}>
+                      <ShoppingBag className="w-4 h-4 mr-1" />
+                      Nákupy
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                      <DialogTitle>Nákupy @{profile.username}</DialogTitle>
+                    </DialogHeader>
+                    {loadingPurchases ? (
+                      <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div>
+                    ) : userPurchases.length === 0 ? (
+                      <p className="text-muted-foreground text-center py-4">Žádné nákupy</p>
+                    ) : (
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {userPurchases.map(p => (
+                          <div key={p.id} className="flex justify-between items-center p-2 bg-muted/50 rounded">
+                            <span>{(p.shop_items as any)?.name || 'Neznámá položka'}</span>
+                            <div className="flex gap-2 items-center">
+                              <Badge variant="secondary">{p.total_price} b.</Badge>
+                              <Badge>{p.status}</Badge>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </DialogContent>
+                </Dialog>
+
+                {/* 5. View user messages */}
+                <Dialog open={showUserMessages} onOpenChange={setShowUserMessages}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" onClick={handleViewUserMessages}>
+                      <Mail className="w-4 h-4 mr-1" />
+                      Zprávy
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                      <DialogTitle>Zprávy @{profile.username}</DialogTitle>
+                    </DialogHeader>
+                    {loadingMessages ? (
+                      <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div>
+                    ) : userMessages.length === 0 ? (
+                      <p className="text-muted-foreground text-center py-4">Žádné zprávy</p>
+                    ) : (
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {userMessages.map(m => (
+                          <div key={m.id} className="p-2 bg-muted/50 rounded">
+                            <div className="font-medium text-sm">{m.subject}</div>
+                            <div className="text-xs text-muted-foreground truncate">{m.content}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </DialogContent>
+                </Dialog>
+
+                {/* 6. Reset points */}
+                <Dialog open={resetPointsOpen} onOpenChange={setResetPointsOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="text-destructive">
+                      <RefreshCw className="w-4 h-4 mr-1" />
+                      Reset bodů
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Vynulovat body @{profile.username}?</DialogTitle>
+                    </DialogHeader>
+                    <p className="text-muted-foreground">Aktuální stav: {profile.points} bodů. Body budou nastaveny na 0.</p>
+                    <DialogFooter>
+                      <Button variant="destructive" onClick={handleResetPoints} disabled={addingPoints}>
+                        {addingPoints ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                        Vynulovat
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                {/* 7. Send warning */}
+                <Dialog open={showBanDialog} onOpenChange={setShowBanDialog}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="text-yellow-600">
+                      <Flag className="w-4 h-4 mr-1" />
+                      Varování
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Odeslat varování @{profile.username}</DialogTitle>
+                    </DialogHeader>
+                    <Textarea 
+                      value={banReason} 
+                      onChange={(e) => setBanReason(e.target.value)}
+                      placeholder="Důvod varování..."
+                      rows={3}
+                    />
+                    <DialogFooter>
+                      <Button variant="destructive" onClick={handleSendWarning}>
+                        <Flag className="w-4 h-4 mr-1" />
+                        Odeslat varování
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                {/* 8. Copy user ID */}
+                <Button variant="outline" size="sm" onClick={handleCopyUserId}>
+                  <ClipboardList className="w-4 h-4 mr-1" />
+                  ID
+                </Button>
+
+                {/* 9. View activity summary */}
+                <Button variant="outline" size="sm" onClick={handleViewActivity}>
+                  <BarChart3 className="w-4 h-4 mr-1" />
+                  Aktivita
+                </Button>
+
+                {/* 10. Admin panel */}
                 <Button variant="outline" size="sm" asChild>
                   <Link to="/admin">
                     <UserPlus className="w-4 h-4 mr-1" />
-                    Admin panel
+                    Admin
                   </Link>
                 </Button>
               </div>
