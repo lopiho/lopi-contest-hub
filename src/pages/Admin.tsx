@@ -14,9 +14,7 @@ import { calculateRatingStats, getRatingQuality } from '@/lib/points';
 import RatingDisplay from '@/components/RatingDisplay';
 import UserBadge, { getRoleDisplayName, getRoleBadgeColor } from '@/components/UserBadge';
 import SendMessage from '@/components/SendMessage';
-import { FileText, CheckCircle, XCircle, Star, Loader2, Coins, Clock, AlertTriangle, Sparkles, TrendingUp, HelpCircle, Plus, Image as ImageIcon, Trophy, Users, Trash2, UserPlus, Crown, Edit, Mail, Send, ShoppingBag, Package, ToggleLeft, ToggleRight, Award, BookOpen, Download, RefreshCw, BarChart3, FilePlus, Code } from 'lucide-react';
-import PageManager from '@/components/admin/PageManager';
-import LvZJManager from '@/components/admin/LvZJManager';
+import { FileText, CheckCircle, XCircle, Star, Loader2, Coins, Clock, AlertTriangle, Sparkles, TrendingUp, HelpCircle, Plus, Image as ImageIcon, Trophy, Users, Trash2, UserPlus, Crown, Edit, Mail, Send, ShoppingBag, Package, ToggleLeft, ToggleRight, Award, BookOpen, Download, RefreshCw, BarChart3 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Navigate } from 'react-router-dom';
@@ -980,8 +978,6 @@ lopi`;
             <TabsTrigger value="tipovacky" className="gap-2"><HelpCircle className="w-4 h-4" />Tipovačky</TabsTrigger>
             <TabsTrigger value="obchudek" className="gap-2"><ShoppingBag className="w-4 h-4" />Obchůdek</TabsTrigger>
             <TabsTrigger value="users" className="gap-2"><Crown className="w-4 h-4" />Uživatelé</TabsTrigger>
-            <TabsTrigger value="pages" className="gap-2"><FilePlus className="w-4 h-4" />Stránky</TabsTrigger>
-            <TabsTrigger value="lvzj" className="gap-2"><Code className="w-4 h-4" />LvZJ</TabsTrigger>
             <TabsTrigger value="gdpr" className="gap-2">
               <Trash2 className="w-4 h-4" />
               GDPR {deletionRequests.length > 0 && <Badge variant="destructive" className="ml-1">{deletionRequests.length}</Badge>}
@@ -1337,24 +1333,6 @@ lopi`;
                   </CardContent>
                 </Card>)}
             </div>
-          </TabsContent>
-
-          {/* Pages Tab */}
-          <TabsContent value="pages" className="space-y-6">
-            <h2 className="text-xl font-display font-bold flex items-center gap-2">
-              <FilePlus className="w-5 h-5" />
-              Správa dynamických stránek
-            </h2>
-            <PageManager />
-          </TabsContent>
-
-          {/* LvZJ Tab */}
-          <TabsContent value="lvzj" className="space-y-6">
-            <h2 className="text-xl font-display font-bold flex items-center gap-2">
-              <Code className="w-5 h-5" />
-              Správa LvZJ příkladů a tipů
-            </h2>
-            <LvZJManager />
           </TabsContent>
 
           {/* GDPR Tab */}

@@ -17,7 +17,6 @@ import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import PravidlaOchranaOU from "./pages/PravidlaOchranaOU";
 import LvZJ from "./pages/LvZJ";
-import DynamicPage from "./pages/DynamicPage";
 
 const queryClient = new QueryClient();
 
@@ -40,7 +39,6 @@ const App = () => (
             <Route path="/lvzj" element={<Layout><LvZJ /></Layout>} />
             <Route path="/posta" element={<Layout><Posta /></Layout>} />
             <Route path="/u/:username" element={<Layout><Profile /></Layout>} />
-            <Route path="/:slug" element={<Layout><DynamicPage /></Layout>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

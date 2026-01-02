@@ -1,35 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { LvZJContent } from '@/lib/lvzj-parser';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { BookOpen, Palette, Link as LinkIcon, List, Type, Box, Quote, Sparkles, Eye, Edit2, Clock, AlertTriangle, Settings } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { BookOpen, Palette, Link as LinkIcon, List, Type, Box, Quote, Sparkles, Eye, Edit2, Clock, AlertTriangle } from 'lucide-react';
 
-interface LvZJExample {
-  id: string;
-  category: string;
-  code: string;
-  description: string;
-  is_visible: boolean;
-  sort_order: number;
-}
-
-interface LvZJTip {
-  id: string;
-  title: string;
-  content: string;
-  color_class: string;
-  is_visible: boolean;
-  sort_order: number;
-}
-
-// Default examples (used when no custom examples exist)
-const defaultExamples = [
+const examples = [
   {
     category: "Stylování textu",
     icon: <Palette className="w-5 h-5" />,
@@ -137,7 +114,7 @@ const defaultExamples = [
     ]
   },
   {
-    category: "Žížalky",
+    category: "Žížalky (progress bary)",
     icon: <Sparkles className="w-5 h-5" />,
     items: [
       { code: "(žížalka 50 %)", desc: "Progress bar na 50%" },
@@ -167,133 +144,8 @@ const defaultExamples = [
   },
 ];
 
-const defaultTips = [
-  {
-    title: "Kombinování stylů",
-    content: "Styly můžeš kombinovat v jednom příkazu: (tučně červeně kurzívou)",
-    color_class: "primary"
-  },
-  {
-    title: "Konec řádku ruší stylování",
-    content: "Každý nový řádek automaticky vrátí text do normálního stylu. Nemusíš používat (normálně).",
-    color_class: "accent"
-  },
-  {
-    title: "Vnořené prvky",
-    content: "Boxíky a citace mohou obsahovat další LvZJ formátování uvnitř.",
-    color_class: "green"
-  },
-  {
-    title: "Escape závorek",
-    content: "Pokud potřebuješ napsat závorku bez zpracování, použij (závorka) nebo obal text mezi (prostě) a (azj).",
-    color_class: "yellow"
-  }
-];
-
-const colorClasses: Record<string, string> = {
-  primary: "bg-primary/5 border-primary/20",
-  accent: "bg-accent/10 border-accent/20",
-  green: "bg-green-500/10 border-green-500/20",
-  yellow: "bg-yellow-500/10 border-yellow-500/20",
-  red: "bg-red-500/10 border-red-500/20",
-  purple: "bg-purple-500/10 border-purple-500/20"
-};
-
-const categoryIcons: Record<string, React.ReactNode> = {
-  "Stylování textu": <Palette className="w-5 h-5" />,
-  "Barvy textu": <Sparkles className="w-5 h-5" />,
-  "Podbarvení": <Palette className="w-5 h-5" />,
-  "Kombinace stylů": <Type className="w-5 h-5" />,
-  "Odkazy": <LinkIcon className="w-5 h-5" />,
-  "Nadpisy a zarovnání": <Type className="w-5 h-5" />,
-  "Seznamy": <List className="w-5 h-5" />,
-  "Boxíky": <Box className="w-5 h-5" />,
-  "Citace": <Quote className="w-5 h-5" />,
-  "Oddělovače": <Type className="w-5 h-5" />,
-  "Žížalky": <Sparkles className="w-5 h-5" />,
-  "Interaktivní prvky": <AlertTriangle className="w-5 h-5" />,
-  "Speciální": <Sparkles className="w-5 h-5" />
-};
-
 export default function LvZJ() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
   const [testInput, setTestInput] = useState('(tučně)Ahoj světe!\n\n(červeně)Červený text(normálně) a pak normální.\n\n(spoiler)Tajný obsah(konec)\n\n(žížalka 75 %)');
-  const [customExamples, setCustomExamples] = useState<LvZJExample[]>([]);
-  const [customTips, setCustomTips] = useState<LvZJTip[]>([]);
-  const [isOrganizer, setIsOrganizer] = useState(false);
-
-  useEffect(() => {
-    fetchCustomData();
-    if (user) {
-      checkRole();
-    }
-  }, [user]);
-
-  const checkRole = async () => {
-    const { data } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user?.id);
-    setIsOrganizer(data?.some(r => r.role === 'organizer' || r.role === 'helper') || false);
-  };
-
-  const fetchCustomData = async () => {
-    // Fetch custom examples
-    const { data: examplesData } = await supabase
-      .from('site_content')
-      .select('*')
-      .eq('key', 'lvzj_examples')
-      .maybeSingle();
-
-    if (examplesData) {
-      try {
-        const parsed = JSON.parse(examplesData.content);
-        setCustomExamples(parsed.filter((e: LvZJExample) => e.is_visible));
-      } catch {
-        setCustomExamples([]);
-      }
-    }
-
-    // Fetch custom tips
-    const { data: tipsData } = await supabase
-      .from('site_content')
-      .select('*')
-      .eq('key', 'lvzj_tips')
-      .maybeSingle();
-
-    if (tipsData) {
-      try {
-        const parsed = JSON.parse(tipsData.content);
-        setCustomTips(parsed.filter((t: LvZJTip) => t.is_visible));
-      } catch {
-        setCustomTips([]);
-      }
-    }
-  };
-
-  // Merge custom examples with defaults, grouping by category
-  const getExamplesForCategory = (category: string) => {
-    const defaultItems = defaultExamples.find(e => e.category === category)?.items || [];
-    const customItems = customExamples
-      .filter(e => e.category === category)
-      .map(e => ({ code: e.code, desc: e.description }));
-    return [...defaultItems, ...customItems];
-  };
-
-  const allCategories = [...new Set([
-    ...defaultExamples.map(e => e.category),
-    ...customExamples.map(e => e.category)
-  ])];
-
-  // Merge tips
-  const displayTips = customTips.length > 0 
-    ? customTips.map(t => ({
-        title: t.title,
-        content: t.content,
-        color_class: t.color_class
-      }))
-    : defaultTips;
 
   return (
     <div className="min-h-[calc(100vh-4rem)] py-8">
@@ -308,12 +160,6 @@ export default function LvZJ() {
             Formátovací jazyk pro texty na Lopíku. Všechny příkazy píšeš do obyčejných závorek, česky, 
             jako bys někomu diktoval/a pokyny.
           </p>
-          {isOrganizer && (
-            <Button variant="outline" size="sm" className="mt-4" onClick={() => navigate('/admin')}>
-              <Settings className="w-4 h-4 mr-1" />
-              Upravit příklady a tipy
-            </Button>
-          )}
         </div>
 
         {/* Test area */}
@@ -358,25 +204,25 @@ export default function LvZJ() {
         {/* Reference */}
         <Tabs defaultValue="stylování-textu" className="space-y-6">
           <TabsList className="flex-wrap h-auto gap-1 p-1">
-            {allCategories.map((cat) => (
-              <TabsTrigger key={cat} value={cat.toLowerCase().replace(/\s+/g, '-')} className="text-xs">
-                {cat}
+            {examples.map((cat) => (
+              <TabsTrigger key={cat.category} value={cat.category.toLowerCase().replace(/\s+/g, '-')} className="text-xs">
+                {cat.category}
               </TabsTrigger>
             ))}
           </TabsList>
 
-          {allCategories.map((category) => (
-            <TabsContent key={category} value={category.toLowerCase().replace(/\s+/g, '-')}>
+          {examples.map((category) => (
+            <TabsContent key={category.category} value={category.category.toLowerCase().replace(/\s+/g, '-')}>
               <Card className="shadow-card">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    {categoryIcons[category] || <Sparkles className="w-5 h-5" />}
-                    {category}
+                    {category.icon}
+                    {category.category}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {getExamplesForCategory(category).map((item, i) => (
+                    {category.items.map((item, i) => (
                       <div key={i} className="grid md:grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg border">
                         <div>
                           <div className="text-xs text-muted-foreground mb-1">Kód</div>
@@ -411,22 +257,30 @@ export default function LvZJ() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {displayTips.map((tip, i) => (
-              <div key={i} className={`p-4 rounded-lg border ${colorClasses[tip.color_class] || colorClasses.primary}`}>
-                <h3 className="font-semibold mb-2">{tip.title}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {tip.content.includes('(') ? (
-                    <>
-                      {tip.content.split(/(\([^)]+\))/).map((part, j) => 
-                        part.startsWith('(') && part.endsWith(')') 
-                          ? <code key={j} className="bg-background px-1 rounded">{part}</code>
-                          : part
-                      )}
-                    </>
-                  ) : tip.content}
-                </p>
-              </div>
-            ))}
+            <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
+              <h3 className="font-semibold mb-2">Kombinování stylů</h3>
+              <p className="text-sm text-muted-foreground">
+                Styly můžeš kombinovat v jednom příkazu: <code className="bg-background px-1 rounded">(tučně červeně kurzívou)</code>
+              </p>
+            </div>
+            <div className="p-4 bg-accent/10 rounded-lg border border-accent/20">
+              <h3 className="font-semibold mb-2">Konec řádku ruší stylování</h3>
+              <p className="text-sm text-muted-foreground">
+                Každý nový řádek automaticky vrátí text do normálního stylu. Nemusíš používat <code className="bg-background px-1 rounded">(normálně)</code>.
+              </p>
+            </div>
+            <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/20">
+              <h3 className="font-semibold mb-2">Vnořené prvky</h3>
+              <p className="text-sm text-muted-foreground">
+                Boxíky a citace mohou obsahovat další LvZJ formátování uvnitř.
+              </p>
+            </div>
+            <div className="p-4 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
+              <h3 className="font-semibold mb-2">Escape závorek</h3>
+              <p className="text-sm text-muted-foreground">
+                Pokud potřebuješ napsat závorku bez zpracování, použij <code className="bg-background px-1 rounded">(závorka)</code> nebo obal text mezi <code className="bg-background px-1 rounded">(prostě)</code> a <code className="bg-background px-1 rounded">(azj)</code>.
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>
