@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
 import PublishedArticlesList from '@/components/PublishedArticlesList';
+import { LvZJContent } from '@/lib/lvzj-parser';
 
 interface Article {
   id: string;
@@ -308,8 +309,8 @@ export default function Clankovnice() {
                                 <DialogTitle className="font-display text-xl">{article.title}</DialogTitle>
                                 <p className="text-sm text-muted-foreground">od @{article.author_username}</p>
                               </DialogHeader>
-                              <div className="prose prose-sm max-w-none py-4 whitespace-pre-wrap">
-                                {article.content}
+                              <div className="prose prose-sm max-w-none py-4">
+                                <LvZJContent content={article.content} />
                               </div>
                               <div className="border-t pt-4">
                                 <p className="text-sm font-medium mb-3">Tvé hodnocení (1-10):</p>

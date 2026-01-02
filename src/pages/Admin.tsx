@@ -739,12 +739,14 @@ lopi`;
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-display font-bold flex items-center gap-3">Organizátorství<div className="w-12 h-12 bg-secondary rounded-2xl flex items-center justify-center shadow-card">
+            <h1 className="text-3xl font-display font-bold flex items-center gap-3">
+              <div className="w-12 h-12 bg-secondary rounded-2xl flex items-center justify-center shadow-card">
                 <Award className="w-6 h-6 text-secondary-foreground" />
               </div>
               Admin Panel
             </h1>
           </div>
+          <SendMessage />
         </div>
 
         {/* Stats */}

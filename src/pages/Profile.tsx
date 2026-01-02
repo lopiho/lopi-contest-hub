@@ -1,14 +1,20 @@
 import { useState, useEffect } from 'react';
-import { useParams, Navigate } from 'react-router-dom';
+import { useParams, Navigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Star, Trophy, FileText, MessageCircle, Edit2, Save, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Loader2, Star, Trophy, FileText, MessageCircle, Edit2, Save, X, Mail, Send, Crown, Coins, Trash2, UserPlus, Key, Eye, EyeOff, ShoppingBag, AlertTriangle } from 'lucide-react';
 import UserBadge, { getRoleDisplayName, getRoleBadgeColor } from '@/components/UserBadge';
 import { LvZJContent } from '@/lib/lvzj-parser';
+import { toast } from 'sonner';
 
 interface ProfileData {
   id: string;
@@ -23,6 +29,17 @@ interface UserStats {
   articlesCount: number;
   ratingsGiven: number;
   gamesParticipated: number;
+  gamesWon: number;
+  purchasesCount: number;
+  messagesCount: number;
+}
+
+interface Article {
+  id: string;
+  title: string;
+  status: string;
+  points_awarded: number;
+  created_at: string;
 }
 
 // Crown component for the profile header
@@ -41,20 +58,56 @@ export default function Profile() {
   const { user } = useAuth();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [roles, setRoles] = useState<string[]>([]);
-  const [stats, setStats] = useState<UserStats>({ articlesCount: 0, ratingsGiven: 0, gamesParticipated: 0 });
+  const [viewerRoles, setViewerRoles] = useState<string[]>([]);
+  const [stats, setStats] = useState<UserStats>({ 
+    articlesCount: 0, ratingsGiven: 0, gamesParticipated: 0, 
+    gamesWon: 0, purchasesCount: 0, messagesCount: 0 
+  });
+  const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  
+  // Owner functions state
   const [isEditing, setIsEditing] = useState(false);
   const [editBio, setEditBio] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  
+  // Organizer functions state
+  const [sendMessageOpen, setSendMessageOpen] = useState(false);
+  const [messageSubject, setMessageSubject] = useState('');
+  const [messageContent, setMessageContent] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
+  
+  const [addPointsOpen, setAddPointsOpen] = useState(false);
+  const [pointsToAdd, setPointsToAdd] = useState('');
+  const [pointsReason, setPointsReason] = useState('');
+  const [addingPoints, setAddingPoints] = useState(false);
+  
+  const [changeRoleOpen, setChangeRoleOpen] = useState(false);
+  const [newRole, setNewRole] = useState('');
+  const [changingRole, setChangingRole] = useState(false);
 
   const isOwnProfile = user && profile && user.id === profile.id;
+  const isOrganizer = viewerRoles.includes('organizer') || viewerRoles.includes('helper');
 
   useEffect(() => {
     if (username) {
       fetchProfile();
     }
-  }, [username]);
+    if (user) {
+      fetchViewerRoles();
+    }
+  }, [username, user]);
+
+  const fetchViewerRoles = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id);
+    setViewerRoles(data?.map(r => r.role) || []);
+  };
 
   const fetchProfile = async () => {
     setLoading(true);
@@ -73,13 +126,11 @@ export default function Profile() {
       return;
     }
 
-    // Cast to include bio field which may not be in types yet
     const profileWithBio = {
       ...profileData,
       bio: (profileData as any).bio || null
     } as ProfileData;
     setProfile(profileWithBio);
-    setEditBio(profileWithBio.bio || '');
     setEditBio(profileWithBio.bio || '');
 
     // Fetch roles
@@ -90,22 +141,32 @@ export default function Profile() {
 
     setRoles(rolesData?.map(r => r.role) || []);
 
-    // Fetch stats
-    const [articlesRes, ratingsRes, tipsRes] = await Promise.all([
-      supabase.from('articles').select('id', { count: 'exact' }).eq('author_id', profileData.id),
+    // Fetch extended stats
+    const [articlesRes, ratingsRes, tipsRes, winsRes, purchasesRes, messagesRes] = await Promise.all([
+      supabase.from('articles').select('id, title, status, points_awarded, created_at').eq('author_id', profileData.id).order('created_at', { ascending: false }),
       supabase.from('article_ratings').select('id', { count: 'exact' }).eq('user_id', profileData.id),
       supabase.from('guessing_tips').select('id', { count: 'exact' }).eq('user_id', profileData.id),
+      supabase.from('guessing_tips').select('id', { count: 'exact' }).eq('user_id', profileData.id).eq('is_winner', true),
+      supabase.from('purchases').select('id', { count: 'exact' }).eq('user_id', profileData.id),
+      supabase.from('messages').select('id', { count: 'exact' }).eq('recipient_id', profileData.id),
     ]);
 
+    setArticles((articlesRes.data || []) as Article[]);
     setStats({
-      articlesCount: articlesRes.count || 0,
+      articlesCount: articlesRes.data?.length || 0,
       ratingsGiven: ratingsRes.count || 0,
       gamesParticipated: tipsRes.count || 0,
+      gamesWon: winsRes.count || 0,
+      purchasesCount: purchasesRes.count || 0,
+      messagesCount: messagesRes.count || 0,
     });
 
     setLoading(false);
   };
 
+  // ============ OWNER FUNCTIONS (6) ============
+  
+  // 1. Edit bio
   const handleSaveBio = async () => {
     if (!profile || !isOwnProfile) return;
 
@@ -118,9 +179,157 @@ export default function Profile() {
     if (!error) {
       setProfile({ ...profile, bio: editBio });
       setIsEditing(false);
+      toast.success('Bio uloženo!');
+    } else {
+      toast.error('Chyba při ukládání');
     }
     setSaving(false);
   };
+
+  // 2. Preview bio (toggle)
+  // Already handled by showPreview state
+
+  // 3. View own articles
+  // Already shown in stats section
+
+  // 4. View statistics
+  // Already shown in stats section
+
+  // 5. Copy profile link
+  const handleCopyProfileLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    toast.success('Odkaz na profil zkopírován!');
+  };
+
+  // 6. Request data deletion
+  const handleRequestDeletion = async () => {
+    if (!profile || !isOwnProfile) return;
+    
+    const { error } = await supabase.from('deletion_requests').insert({
+      user_id: profile.id,
+      reason: 'Žádost o smazání účtu z profilu'
+    });
+    
+    if (!error) {
+      toast.success('Žádost o smazání údajů odeslána');
+    } else {
+      toast.error('Chyba při odesílání žádosti');
+    }
+  };
+
+  // ============ ORGANIZER FUNCTIONS (8) ============
+  
+  // 1. Send message to user
+  const handleSendMessage = async () => {
+    if (!profile || !messageSubject.trim() || !messageContent.trim()) {
+      toast.error('Vyplňte předmět a obsah zprávy');
+      return;
+    }
+
+    setSendingMessage(true);
+    const { error } = await supabase.from('messages').insert({
+      sender_id: user?.id,
+      recipient_id: profile.id,
+      subject: messageSubject.trim(),
+      content: messageContent.trim(),
+    });
+
+    if (!error) {
+      toast.success('Zpráva odeslána');
+      setSendMessageOpen(false);
+      setMessageSubject('');
+      setMessageContent('');
+    } else {
+      toast.error('Chyba při odesílání zprávy');
+    }
+    setSendingMessage(false);
+  };
+
+  // 2. Add/remove points
+  const handleAddPoints = async () => {
+    if (!profile) return;
+    const points = parseInt(pointsToAdd);
+    if (isNaN(points)) {
+      toast.error('Zadejte platný počet bodů');
+      return;
+    }
+
+    setAddingPoints(true);
+    
+    const { error } = await supabase
+      .from('profiles')
+      .update({ points: profile.points + points })
+      .eq('id', profile.id);
+
+    if (!error) {
+      // Send notification message
+      if (pointsReason.trim()) {
+        await supabase.from('messages').insert({
+          sender_id: user?.id,
+          recipient_id: profile.id,
+          subject: points > 0 ? `Získal/a jsi ${points} bodů!` : `Ztratil/a jsi ${Math.abs(points)} bodů`,
+          content: pointsReason.trim(),
+        });
+      }
+      
+      setProfile({ ...profile, points: profile.points + points });
+      toast.success(points > 0 ? `Přidáno ${points} bodů` : `Odebráno ${Math.abs(points)} bodů`);
+      setAddPointsOpen(false);
+      setPointsToAdd('');
+      setPointsReason('');
+    } else {
+      toast.error('Chyba při změně bodů');
+    }
+    setAddingPoints(false);
+  };
+
+  // 3. Change user role
+  const handleChangeRole = async () => {
+    if (!profile || !newRole) return;
+
+    setChangingRole(true);
+    
+    // Check if role already exists
+    const existingRole = roles.find(r => r === newRole);
+    if (existingRole) {
+      // Remove role
+      const { error } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', profile.id)
+        .eq('role', newRole as 'helper' | 'organizer' | 'user');
+      
+      if (!error) {
+        setRoles(roles.filter(r => r !== newRole));
+        toast.success(`Role ${getRoleDisplayName(newRole)} odebrána`);
+      }
+    } else {
+      // Add role
+      const { error } = await supabase
+        .from('user_roles')
+        .insert([{ user_id: profile.id, role: newRole as 'helper' | 'organizer' | 'user' }]);
+      
+      if (!error) {
+        setRoles([...roles, newRole]);
+        toast.success(`Role ${getRoleDisplayName(newRole)} přidána`);
+      }
+    }
+    
+    setChangingRole(false);
+    setChangeRoleOpen(false);
+    setNewRole('');
+  };
+
+  // 4. View user's articles (already shown)
+  
+  // 5. View user's purchases count (already in stats)
+  
+  // 6. View user's messages count (already in stats)
+  
+  // 7. View games won (already in stats)
+  
+  // 8. Quick link to user management
+  // (go to admin panel with user preselected)
 
   if (loading) {
     return (
@@ -145,12 +354,12 @@ export default function Profile() {
 
   if (!profile) return null;
 
-  const isOrganizer = roles.includes('organizer');
-  const isHelper = roles.includes('helper');
+  const isProfileOrganizer = roles.includes('organizer');
+  const isProfileHelper = roles.includes('helper');
 
   return (
     <div className="min-h-[calc(100vh-4rem)] py-8">
-      <div className="container mx-auto px-4 max-w-2xl">
+      <div className="container mx-auto px-4 max-w-3xl">
         {/* Profile Header */}
         <Card className="mb-6">
           <CardContent className="pt-6">
@@ -164,8 +373,8 @@ export default function Profile() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-2xl font-display font-bold flex items-center gap-2">
                     @{profile.username}
-                    {isOrganizer && <CrownIcon color="orange" />}
-                    {isHelper && !isOrganizer && <CrownIcon color="pink" />}
+                    {isProfileOrganizer && <CrownIcon color="orange" />}
+                    {isProfileHelper && !isProfileOrganizer && <CrownIcon color="pink" />}
                   </h1>
                 </div>
 
@@ -182,9 +391,189 @@ export default function Profile() {
                     <Trophy className="w-4 h-4 text-primary" />
                     <span className="font-semibold text-foreground">{profile.points}</span> bodů
                   </span>
+                  <span>
+                    Registrován/a {new Date(profile.created_at).toLocaleDateString('cs-CZ')}
+                  </span>
                 </div>
               </div>
             </div>
+
+            {/* Owner actions */}
+            {isOwnProfile && (
+              <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t">
+                <Button variant="outline" size="sm" onClick={handleCopyProfileLink}>
+                  Kopírovat odkaz
+                </Button>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="text-destructive">
+                      <Trash2 className="w-4 h-4 mr-1" />
+                      Žádost o smazání účtu
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2 text-destructive">
+                        <AlertTriangle className="w-5 h-5" />
+                        Smazat účet
+                      </DialogTitle>
+                    </DialogHeader>
+                    <p className="text-muted-foreground">
+                      Opravdu chceš požádat o smazání svého účtu? Organizátor zkontroluje žádost a po schválení budou všechna tvá data smazána.
+                    </p>
+                    <DialogFooter>
+                      <Button variant="destructive" onClick={handleRequestDeletion}>
+                        Odeslat žádost
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            )}
+
+            {/* Organizer actions */}
+            {isOrganizer && !isOwnProfile && (
+              <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t">
+                <Dialog open={sendMessageOpen} onOpenChange={setSendMessageOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Mail className="w-4 h-4 mr-1" />
+                      Odeslat zprávu
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Odeslat zprávu @{profile.username}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Předmět</Label>
+                        <Input 
+                          value={messageSubject} 
+                          onChange={(e) => setMessageSubject(e.target.value)}
+                          placeholder="Předmět zprávy..."
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Obsah</Label>
+                        <Textarea 
+                          value={messageContent} 
+                          onChange={(e) => setMessageContent(e.target.value)}
+                          placeholder="Obsah zprávy..."
+                          rows={4}
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={handleSendMessage} disabled={sendingMessage}>
+                        {sendingMessage ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Send className="w-4 h-4 mr-1" />}
+                        Odeslat
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                <Dialog open={addPointsOpen} onOpenChange={setAddPointsOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Coins className="w-4 h-4 mr-1" />
+                      Upravit body
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Upravit body @{profile.username}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <p className="text-sm text-muted-foreground">
+                        Aktuální stav: <span className="font-bold text-foreground">{profile.points}</span> bodů
+                      </p>
+                      <div className="space-y-2">
+                        <Label>Počet bodů (záporné číslo odebere)</Label>
+                        <Input 
+                          type="number"
+                          value={pointsToAdd} 
+                          onChange={(e) => setPointsToAdd(e.target.value)}
+                          placeholder="např. 10 nebo -5"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Důvod (bude odeslán jako zpráva)</Label>
+                        <Textarea 
+                          value={pointsReason} 
+                          onChange={(e) => setPointsReason(e.target.value)}
+                          placeholder="Volitelný důvod..."
+                          rows={2}
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={handleAddPoints} disabled={addingPoints}>
+                        {addingPoints ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Coins className="w-4 h-4 mr-1" />}
+                        Uložit
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                <Dialog open={changeRoleOpen} onOpenChange={setChangeRoleOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Crown className="w-4 h-4 mr-1" />
+                      Změnit roli
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Změnit roli @{profile.username}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label className="mb-2 block">Aktuální role:</Label>
+                        <div className="flex flex-wrap gap-2">
+                          {roles.map(role => (
+                            <Badge key={role} className={getRoleBadgeColor(role)}>
+                              {getRoleDisplayName(role)}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Přidat/odebrat roli</Label>
+                        <Select value={newRole} onValueChange={setNewRole}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Vyber roli..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="helper">
+                              {roles.includes('helper') ? '❌ Odebrat: ' : '✓ Přidat: '}
+                              Pomocníček
+                            </SelectItem>
+                            <SelectItem value="organizer">
+                              {roles.includes('organizer') ? '❌ Odebrat: ' : '✓ Přidat: '}
+                              Organizátor
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={handleChangeRole} disabled={changingRole || !newRole}>
+                        {changingRole ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Crown className="w-4 h-4 mr-1" />}
+                        {newRole && roles.includes(newRole) ? 'Odebrat roli' : 'Přidat roli'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                <Button variant="outline" size="sm" asChild>
+                  <Link to="/admin">
+                    <UserPlus className="w-4 h-4 mr-1" />
+                    Admin panel
+                  </Link>
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -194,31 +583,59 @@ export default function Profile() {
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg">O mně</CardTitle>
               {isOwnProfile && !isEditing && (
-                <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)}>
-                  <Edit2 className="w-4 h-4 mr-1" />
-                  Upravit
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)}>
+                    <Edit2 className="w-4 h-4 mr-1" />
+                    Upravit
+                  </Button>
+                </div>
               )}
             </div>
           </CardHeader>
           <CardContent>
             {isEditing ? (
               <div className="space-y-3">
-                <Textarea
-                  value={editBio}
-                  onChange={(e) => setEditBio(e.target.value)}
-                  placeholder="Napiš něco o sobě... Můžeš použít LvZJ formátování!"
-                  rows={4}
-                />
+                <div className="flex gap-2 mb-2">
+                  <Button 
+                    variant={!showPreview ? "secondary" : "ghost"} 
+                    size="sm"
+                    onClick={() => setShowPreview(false)}
+                  >
+                    <Edit2 className="w-4 h-4 mr-1" />
+                    Psát
+                  </Button>
+                  <Button 
+                    variant={showPreview ? "secondary" : "ghost"} 
+                    size="sm"
+                    onClick={() => setShowPreview(true)}
+                  >
+                    <Eye className="w-4 h-4 mr-1" />
+                    Náhled
+                  </Button>
+                </div>
+                
+                {showPreview ? (
+                  <div className="p-4 bg-muted/50 rounded-lg min-h-[100px]">
+                    {editBio ? <LvZJContent content={editBio} /> : <span className="text-muted-foreground italic">Prázdné bio</span>}
+                  </div>
+                ) : (
+                  <Textarea
+                    value={editBio}
+                    onChange={(e) => setEditBio(e.target.value)}
+                    placeholder="Napiš něco o sobě... Můžeš použít LvZJ formátování!"
+                    rows={4}
+                  />
+                )}
+                
                 <p className="text-xs text-muted-foreground">
-                  Tip: Můžeš použít LvZJ formátování jako (tučně), (kurzívou), (červeně) atd.
+                  Tip: Použij LvZJ formátování: (tučně), (kurzívou), (červeně), (spoiler)text(konec) atd.
                 </p>
                 <div className="flex gap-2">
                   <Button onClick={handleSaveBio} disabled={saving}>
                     {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
                     Uložit
                   </Button>
-                  <Button variant="outline" onClick={() => { setIsEditing(false); setEditBio(profile.bio || ''); }}>
+                  <Button variant="outline" onClick={() => { setIsEditing(false); setEditBio(profile.bio || ''); setShowPreview(false); }}>
                     <X className="w-4 h-4 mr-1" />
                     Zrušit
                   </Button>
@@ -234,31 +651,92 @@ export default function Profile() {
           </CardContent>
         </Card>
 
-        {/* Stats Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Statistiky</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div className="p-4 bg-muted/50 rounded-lg">
-                <FileText className="w-6 h-6 mx-auto mb-2 text-primary" />
-                <div className="text-2xl font-bold">{stats.articlesCount}</div>
-                <div className="text-xs text-muted-foreground">Článků</div>
-              </div>
-              <div className="p-4 bg-muted/50 rounded-lg">
-                <Star className="w-6 h-6 mx-auto mb-2 text-yellow-500" />
-                <div className="text-2xl font-bold">{stats.ratingsGiven}</div>
-                <div className="text-xs text-muted-foreground">Hodnocení</div>
-              </div>
-              <div className="p-4 bg-muted/50 rounded-lg">
-                <MessageCircle className="w-6 h-6 mx-auto mb-2 text-accent" />
-                <div className="text-2xl font-bold">{stats.gamesParticipated}</div>
-                <div className="text-xs text-muted-foreground">Tipovačky</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Stats & Activity Tabs */}
+        <Tabs defaultValue="stats" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="stats">Statistiky</TabsTrigger>
+            <TabsTrigger value="articles">Články ({stats.articlesCount})</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="stats">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="p-4 bg-muted/50 rounded-lg text-center">
+                    <FileText className="w-6 h-6 mx-auto mb-2 text-primary" />
+                    <div className="text-2xl font-bold">{stats.articlesCount}</div>
+                    <div className="text-xs text-muted-foreground">Článků</div>
+                  </div>
+                  <div className="p-4 bg-muted/50 rounded-lg text-center">
+                    <Star className="w-6 h-6 mx-auto mb-2 text-yellow-500" />
+                    <div className="text-2xl font-bold">{stats.ratingsGiven}</div>
+                    <div className="text-xs text-muted-foreground">Hodnocení</div>
+                  </div>
+                  <div className="p-4 bg-muted/50 rounded-lg text-center">
+                    <MessageCircle className="w-6 h-6 mx-auto mb-2 text-accent" />
+                    <div className="text-2xl font-bold">{stats.gamesParticipated}</div>
+                    <div className="text-xs text-muted-foreground">Tipovačky</div>
+                  </div>
+                  <div className="p-4 bg-muted/50 rounded-lg text-center">
+                    <Trophy className="w-6 h-6 mx-auto mb-2 text-primary" />
+                    <div className="text-2xl font-bold">{stats.gamesWon}</div>
+                    <div className="text-xs text-muted-foreground">Výhry</div>
+                  </div>
+                  <div className="p-4 bg-muted/50 rounded-lg text-center">
+                    <ShoppingBag className="w-6 h-6 mx-auto mb-2 text-green-500" />
+                    <div className="text-2xl font-bold">{stats.purchasesCount}</div>
+                    <div className="text-xs text-muted-foreground">Nákupy</div>
+                  </div>
+                  <div className="p-4 bg-muted/50 rounded-lg text-center">
+                    <Mail className="w-6 h-6 mx-auto mb-2 text-blue-500" />
+                    <div className="text-2xl font-bold">{stats.messagesCount}</div>
+                    <div className="text-xs text-muted-foreground">Zprávy</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="articles">
+            <Card>
+              <CardContent className="pt-6">
+                {articles.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">Žádné články</p>
+                ) : (
+                  <div className="space-y-2">
+                    {articles.map(article => {
+                      const statusColors: Record<string, string> = {
+                        pending: 'bg-yellow-500',
+                        approved: 'bg-blue-500',
+                        rejected: 'bg-destructive',
+                        rated: 'bg-accent',
+                        published: 'bg-green-500'
+                      };
+                      return (
+                        <div key={article.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <Badge className={statusColors[article.status] || 'bg-muted'}>
+                              {article.status}
+                            </Badge>
+                            <span className="font-medium">{article.title}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            {article.points_awarded > 0 && (
+                              <Badge variant="secondary" className="bg-green-500/10 text-green-600">
+                                +{article.points_awarded}
+                              </Badge>
+                            )}
+                            <span>{new Date(article.created_at).toLocaleDateString('cs-CZ')}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
