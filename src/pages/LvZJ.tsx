@@ -14,11 +14,6 @@ const examples = [
       { code: "(tučně)Tučný text", desc: "Tučné písmo" },
       { code: "(kurzívou)Kurzíva", desc: "Kurzíva" },
       { code: "(škrtnuté)Přeškrtnutý text", desc: "Přeškrtnutí" },
-      { code: "(horní index)text", desc: "Horní index" },
-      { code: "(dolní index)text", desc: "Dolní index" },
-      { code: "(strojově)Strojopis", desc: "Strojové písmo" },
-      { code: "(kapitálkami)Text kapitálkami", desc: "Kapitálky" },
-      { code: "(normálně)Běžný text", desc: "Zrušení stylování" },
     ]
   },
   {
@@ -29,13 +24,6 @@ const examples = [
       { code: "(zeleně)Zelený text", desc: "Zelená" },
       { code: "(modře)Modrý text", desc: "Modrá" },
       { code: "(žlutě)Žlutý text", desc: "Žlutá" },
-      { code: "(oranžově)Oranžový text", desc: "Oranžová" },
-      { code: "(růžově)Růžový text", desc: "Růžová" },
-      { code: "(fialově)Fialový text", desc: "Fialová" },
-      { code: "(hnědě)Hnědý text", desc: "Hnědá" },
-      { code: "(šedě)Šedý text", desc: "Šedá" },
-      { code: "(modrozeleně)Modrozelený text", desc: "Modrozelená" },
-      { code: "(duhově)Duhový text", desc: "Duhová" },
     ]
   },
   {
@@ -53,10 +41,7 @@ const examples = [
     category: "Kombinace stylů",
     icon: <Type className="w-5 h-5" />,
     items: [
-      { code: "(tučně červeně)Tučný červený", desc: "Tučně + červeně" },
-      { code: "(kurzívou modře)Kurzíva modrá", desc: "Kurzíva + modrá" },
-      { code: "(tučně kurzívou zeleně)Text", desc: "Kombinace tří stylů" },
-      { code: "(škrtnuté šedě)Starý text", desc: "Přeškrtnuté + šedě" },
+      { code: "(tučně červeně)Tučný červený", desc: "Tučně + červeně, nyní lze kombinovat jen tučně + barva" }
     ]
   },
   {
@@ -72,9 +57,6 @@ const examples = [
     icon: <Type className="w-5 h-5" />,
     items: [
       { code: "(nadpis)Velký nadpis", desc: "Hlavní nadpis" },
-      { code: "(malý nadpis)Menší nadpis", desc: "Menší nadpis" },
-      { code: "(doprostřed)Vycentrovaný text", desc: "Zarovnání na střed" },
-      { code: "(doprava)Text vpravo", desc: "Zarovnání doprava" },
     ]
   },
   {
@@ -89,20 +71,7 @@ const examples = [
     category: "Boxíky",
     icon: <Box className="w-5 h-5" />,
     items: [
-      { code: "(boxík)Obsah boxíku(konec boxíku)", desc: "Základní boxík" },
-      { code: "(boxík \"Titulek\")Obsah(konec boxíku)", desc: "Boxík s titulkem" },
-      { code: "(modrý boxík \"Info\")Text(konec boxíku)", desc: "Modrý boxík" },
-      { code: "(zelený boxík \"Tip\")Text(konec boxíku)", desc: "Zelený boxík" },
-      { code: "(červený boxík \"Varování\")Text(konec boxíku)", desc: "Červený boxík" },
-    ]
-  },
-  {
-    category: "Citace",
-    icon: <Quote className="w-5 h-5" />,
-    items: [
-      { code: "(citace)Citovaný text(konec citace)", desc: "Základní citace" },
-      { code: "(citace \"Autor\")Text citace(konec citace)", desc: "Citace s autorem" },
-      { code: "(citace \"Autor\" https://zdroj.cz)Text(konec citace)", desc: "Citace s odkazem" },
+      { code: "(boxík)Obsah boxíku(konec boxíku)", desc: "Základní boxík, jiný neexistuje :)" },
     ]
   },
   {
@@ -110,18 +79,6 @@ const examples = [
     icon: <Type className="w-5 h-5" />,
     items: [
       { code: "(oddělovač)", desc: "Vodorovná čára" },
-      { code: "(malý oddělovač)", desc: "Menší čára" },
-    ]
-  },
-  {
-    category: "Žížalky (progress bary)",
-    icon: <Sparkles className="w-5 h-5" />,
-    items: [
-      { code: "(žížalka 50 %)", desc: "Progress bar na 50%" },
-      { code: "(žížalka 3 / 5)", desc: "Progress bar 3 z 5" },
-      { code: "(modrá žížalka 75 %)", desc: "Modrý progress bar" },
-      { code: "(zelená žížalka 8 / 10)", desc: "Zelený progress bar" },
-      { code: "(červená žížalka 25 %)", desc: "Červený progress bar" },
     ]
   },
   {
