@@ -7,7 +7,117 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Edit, Save, X, Trash2, AlertTriangle, FileText, Shield } from "lucide-react";
+import { Edit, Save, X, Trash2, AlertTriangle, FileText, Shield, Eye } from "lucide-react";
+import { LvZJContent } from "@/lib/lvzj-parser";
+
+// Výchozí text pravidel s LvZJ formátováním
+const DEFAULT_PRAVIDLA = `(nadpis)Pravidla soutěže
+
+(tučně)1. Základní ustanovení
+Tato pravidla upravují podmínky účasti v soutěži a způsob hodnocení účastníků.
+
+(tučně)2. Podmínky účasti
+(boxík)Pro účast v soutěži je nutné být registrovaným uživatelem na webu alik.cz!(konec boxíku)
+
+• Účastník musí být registrován na této soutěžní platformě
+• Účastník musí mít aktivní účet na webu alik.cz
+• Jedna osoba může mít pouze jeden soutěžní účet
+• Účastí v soutěži účastník souhlasí s těmito pravidly
+
+(tučně)3. Bodový systém
+Body lze získat následujícími způsoby:
+
+(tučně červeně)Článkovnice:
+• 5 bodů – základní odměna za publikovaný článek
+• 0-5 bodů – bonus podle průměrného hodnocení
+• 1 bod za každé 2 hodnocení (max. 10 bodů za aktivitu)
+
+(tučně modře)Tipovačky:
+• Body dle nastavení organizátora za správný tip
+• Pouze jeden tip na hru
+
+(tučně)4. Hodnocení článků
+• Články hodnotí ostatní účastníci na stupnici 1-10
+• Hodnocení probíhá po schválení článku organizátorem
+• Vlastní článek nelze hodnotit
+
+(tučně)5. Obchůdek
+• Za nasbírané body lze nakupovat v obchůdku
+• Ceny určuje organizátor
+• Nákup je nevratný
+
+(tučně)6. Práva a povinnosti účastníků
+• Chovat se slušně a respektovat ostatní
+• Nepodvádět a nemanipulovat s body
+• Nepoužívat vulgární nebo urážlivý obsah
+• Respektovat autorská práva
+
+(tučně)7. Práva organizátora
+• Organizátor může upravit pravidla soutěže
+• Organizátor může vyloučit účastníka za porušení pravidel
+• Organizátor rozhoduje o výhrách a sporných situacích
+
+(tučně)8. Závěrečná ustanovení
+Účastí v soutěži vyjadřujete souhlas s těmito pravidly.`;
+
+// Výchozí text ochrany OU s LvZJ formátováním
+const DEFAULT_OCHRANA_OU = `(nadpis)Ochrana osobních údajů
+
+(tučně)1. Správce údajů
+Správcem vašich osobních údajů je organizátor této soutěže.
+
+(tučně)2. Zpracovávané údaje
+V rámci soutěže zpracováváme tyto údaje:
+• E-mailová adresa (pro přihlášení a komunikaci)
+• Uživatelské jméno (veřejně zobrazováno)
+• Volitelně: avatar a bio
+• Obsah vytvořený uživatelem (články, tipy, hodnocení, zprávy)
+• Body a historie nákupů
+• Role v systému
+
+(tučně)3. Účel zpracování
+Vaše údaje zpracováváme za účelem:
+• Umožnění účasti v soutěži
+• Zobrazení na žebříčku a v profilu
+• Provoz obchůdku
+• Komunikace mezi účastníky a organizátory
+• Moderace obsahu
+
+(tučně)4. Právní základ
+Zpracování probíhá na základě vašeho souhlasu (registrací do soutěže) a oprávněného zájmu organizátora.
+
+(tučně)5. Doba uchování
+Údaje uchováváme po dobu trvání soutěže a následně až 3 roky pro případné reklamace a archivaci.
+
+(tučně)6. Vaše práva
+Máte právo na:
+• Přístup ke svým údajům
+• Opravu nepřesných údajů
+• Výmaz údajů (právo být zapomenut)
+• Omezení zpracování
+• Přenositelnost údajů
+• Vznesení námitky
+• Podání stížnosti u ÚOOÚ
+
+(boxík)Pro uplatnění práv kontaktujte organizátora nebo využijte formulář níže.(konec boxíku)
+
+(tučně)7. Žádost o smazání údajů
+Po podání žádosti budou:
+• Anonymizovány údaje ve vašem profilu
+• Smazány vaše články, tipy a hodnocení
+• Odstraněna historie nákupů
+• Zrušen váš účet
+
+(tučně)8. Zabezpečení údajů
+• Data jsou uložena na zabezpečených serverech
+• Komunikace probíhá přes šifrované spojení (HTTPS)
+• Přístup k údajům mají pouze oprávněné osoby
+
+(tučně)9. Cookies
+Používáme pouze nezbytné technické cookies pro fungování webu.
+
+(tučně)10. Změny podmínek
+O změnách v ochraně osobních údajů budete informováni na webu.`;
 
 const PravidlaOchranaOU = () => {
   const { user } = useAuth();
@@ -54,8 +164,13 @@ const PravidlaOchranaOU = () => {
       const pravidlaContent = data.find(c => c.key === 'pravidla');
       const ochranaContent = data.find(c => c.key === 'ochrana_ou');
       
-      if (pravidlaContent) setPravidla(pravidlaContent.content);
-      if (ochranaContent) setOchranaOU(ochranaContent.content);
+      // Použít výchozí texty, pokud v DB nic není
+      setPravidla(pravidlaContent?.content || DEFAULT_PRAVIDLA);
+      setOchranaOU(ochranaContent?.content || DEFAULT_OCHRANA_OU);
+    } else {
+      // Pokud selže načtení, použít výchozí
+      setPravidla(DEFAULT_PRAVIDLA);
+      setOchranaOU(DEFAULT_OCHRANA_OU);
     }
     setLoading(false);
   };
@@ -184,12 +299,25 @@ const PravidlaOchranaOU = () => {
             <CardContent>
               {editingPravidla ? (
                 <div className="space-y-4">
-                  <Textarea 
-                    value={editedPravidla}
-                    onChange={(e) => setEditedPravidla(e.target.value)}
-                    className="min-h-[300px]"
-                    placeholder="Napište pravidla soutěže..."
-                  />
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm font-medium mb-2">Editor (LvZJ formátování)</p>
+                      <Textarea 
+                        value={editedPravidla}
+                        onChange={(e) => setEditedPravidla(e.target.value)}
+                        className="min-h-[400px] font-mono text-sm"
+                        placeholder="Napište pravidla soutěže s LvZJ formátováním..."
+                      />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium mb-2 flex items-center gap-2">
+                        <Eye className="h-4 w-4" /> Náhled
+                      </p>
+                      <div className="border rounded-md p-4 min-h-[400px] overflow-auto bg-muted/30">
+                        <LvZJContent content={editedPravidla} />
+                      </div>
+                    </div>
+                  </div>
                   <div className="flex gap-2">
                     <Button onClick={() => handleSave('pravidla', editedPravidla)}>
                       <Save className="h-4 w-4 mr-2" />
@@ -202,8 +330,8 @@ const PravidlaOchranaOU = () => {
                   </div>
                 </div>
               ) : (
-                <div className="prose prose-sm max-w-none whitespace-pre-wrap">
-                  {pravidla || <span className="text-muted-foreground">Zatím nebylo nic napsáno.</span>}
+                <div className="prose prose-sm max-w-none">
+                  <LvZJContent content={pravidla} />
                 </div>
               )}
             </CardContent>
@@ -230,12 +358,25 @@ const PravidlaOchranaOU = () => {
             <CardContent>
               {editingOchrana ? (
                 <div className="space-y-4">
-                  <Textarea 
-                    value={editedOchrana}
-                    onChange={(e) => setEditedOchrana(e.target.value)}
-                    className="min-h-[300px]"
-                    placeholder="Napište informace o ochraně osobních údajů..."
-                  />
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm font-medium mb-2">Editor (LvZJ formátování)</p>
+                      <Textarea 
+                        value={editedOchrana}
+                        onChange={(e) => setEditedOchrana(e.target.value)}
+                        className="min-h-[400px] font-mono text-sm"
+                        placeholder="Napište informace o ochraně osobních údajů s LvZJ formátováním..."
+                      />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium mb-2 flex items-center gap-2">
+                        <Eye className="h-4 w-4" /> Náhled
+                      </p>
+                      <div className="border rounded-md p-4 min-h-[400px] overflow-auto bg-muted/30">
+                        <LvZJContent content={editedOchrana} />
+                      </div>
+                    </div>
+                  </div>
                   <div className="flex gap-2">
                     <Button onClick={() => handleSave('ochrana_ou', editedOchrana)}>
                       <Save className="h-4 w-4 mr-2" />
@@ -248,8 +389,8 @@ const PravidlaOchranaOU = () => {
                   </div>
                 </div>
               ) : (
-                <div className="prose prose-sm max-w-none whitespace-pre-wrap">
-                  {ochranaOU || <span className="text-muted-foreground">Zatím nebylo nic napsáno.</span>}
+                <div className="prose prose-sm max-w-none">
+                  <LvZJContent content={ochranaOU} />
                 </div>
               )}
             </CardContent>
