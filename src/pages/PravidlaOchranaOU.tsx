@@ -13,111 +13,335 @@ import { LvZJContent } from "@/lib/lvzj-parser";
 // Výchozí text pravidel s LvZJ formátováním
 const DEFAULT_PRAVIDLA = `(nadpis)Pravidla soutěže
 
-(tučně)1. Základní ustanovení
+(oddělovač)
+
+(boxík červeně zarovnat-na-střed)
+(tučně)⚠️ DŮLEŽITÁ PODMÍNKA
+Pro účast v soutěži musí být účastník zároveň registrovaným uživatelem na webu (odkaz https://www.alik.cz)alik.cz(konec odkazu)!
+(konec boxíku)
+
+(oddělovač)
+
+(malý nadpis)1. Základní ustanovení
+
+(seznam)
 Tato pravidla upravují podmínky účasti v soutěži a způsob hodnocení účastníků.
+Účastí v soutěži účastník vyjadřuje souhlas s těmito pravidly.
+Organizátor si vyhrazuje právo na změnu pravidel.
+(konec seznamu)
 
-(tučně)2. Podmínky účasti
-(boxík)Pro účast v soutěži je nutné být registrovaným uživatelem na webu alik.cz!(konec boxíku)
+(oddělovač)
 
-• Účastník musí být registrován na této soutěžní platformě
-• Účastník musí mít aktivní účet na webu alik.cz
-• Jedna osoba může mít pouze jeden soutěžní účet
-• Účastí v soutěži účastník souhlasí s těmito pravidly
+(malý nadpis)2. Podmínky účasti
 
-(tučně)3. Bodový systém
-Body lze získat následujícími způsoby:
+Pro účast v soutěži musí účastník splňovat následující podmínky:
 
-(tučně červeně)Článkovnice:
-• 5 bodů – základní odměna za publikovaný článek
-• 0-5 bodů – bonus podle průměrného hodnocení
-• 1 bod za každé 2 hodnocení (max. 10 bodů za aktivitu)
+(číslovaný seznam)
+(tučně)Registrace na soutěžním webu(konec tučně) – účastník musí mít vytvořený a aktivní účet na této platformě.
+(tučně)Registrace na alik.cz(konec tučně) – účastník musí být zároveň registrovaným uživatelem na webu alik.cz.
+(tučně)Jeden účet(konec tučně) – každá osoba smí mít pouze jeden soutěžní účet. Vícenásobné účty budou smazány.
+(tučně)Pravdivé údaje(konec tučně) – účastník uvádí pravdivé informace o své identitě.
+(konec seznamu)
 
-(tučně modře)Tipovačky:
-• Body dle nastavení organizátora za správný tip
-• Pouze jeden tip na hru
+(oddělovač)
 
-(tučně)4. Hodnocení článků
-• Články hodnotí ostatní účastníci na stupnici 1-10
-• Hodnocení probíhá po schválení článku organizátorem
-• Vlastní článek nelze hodnotit
+(malý nadpis)3. Bodový systém
 
-(tučně)5. Obchůdek
-• Za nasbírané body lze nakupovat v obchůdku
-• Ceny určuje organizátor
-• Nákup je nevratný
+Body lze získat účastí v různých soutěžních aktivitách:
 
-(tučně)6. Práva a povinnosti účastníků
-• Chovat se slušně a respektovat ostatní
-• Nepodvádět a nemanipulovat s body
-• Nepoužívat vulgární nebo urážlivý obsah
-• Respektovat autorská práva
+(boxík modře)
+(tučně)📰 ČLÁNKOVNICE
+(konec boxíku)
 
-(tučně)7. Práva organizátora
-• Organizátor může upravit pravidla soutěže
-• Organizátor může vyloučit účastníka za porušení pravidel
-• Organizátor rozhoduje o výhrách a sporných situacích
+(seznam)
+(tučně zelený)5 bodů(konec tučně) – základní odměna za publikovaný článek
+(tučně zelený)0–5 bodů(konec tučně) – bonus podle průměrného hodnocení článku
+(tučně zelený)1 bod za každá 2 hodnocení(konec tučně) – odměna za hodnocení článků ostatních (max. 10 bodů)
+(konec seznamu)
 
-(tučně)8. Závěrečná ustanovení
-Účastí v soutěži vyjadřujete souhlas s těmito pravidly.`;
+(boxík fialově)
+(tučně)🎯 TIPOVAČKY
+(konec boxíku)
+
+(seznam)
+Body dle nastavení konkrétní tipovačky
+Pouze jeden tip na každou hru
+Správná odpověď = body pro vítěze
+(konec seznamu)
+
+(oddělovač)
+
+(malý nadpis)4. Hodnocení článků
+
+(seznam)
+Články hodnotí ostatní účastníci na stupnici (tučně)1–10(konec tučně).
+Hodnocení probíhá (tučně)po schválení(konec tučně) článku organizátorem.
+(tučně červený)Vlastní článek nelze hodnotit!(konec tučně)
+Každý článek lze hodnotit pouze jednou.
+Hodnocení nelze měnit ani mazat.
+(konec seznamu)
+
+(oddělovač)
+
+(malý nadpis)5. Obchůdek
+
+(boxík oranžově)
+Za nasbírané body lze nakupovat odměny v soutěžním obchůdku.
+(konec boxíku)
+
+(seznam)
+Ceny zboží určuje organizátor.
+Po objednání jsou body (tučně)odečteny okamžitě(konec tučně).
+Nákup je (tučně červený)nevratný(konec tučně) – body nelze vrátit.
+O vyřízení objednávky rozhoduje organizátor.
+(konec seznamu)
+
+(oddělovač)
+
+(malý nadpis)6. Práva a povinnosti účastníků
+
+Účastník soutěže je povinen:
+
+(seznam)
+Chovat se slušně a respektovat ostatní účastníky
+Nepodvádět a nemanipulovat s bodovým systémem
+Nepoužívat vulgární, urážlivý nebo nevhodný obsah
+Respektovat autorská práva a neporušovat je
+Nekopírovat cizí články ani obsah
+Reagovat na výzvy organizátora
+(konec seznamu)
+
+(oddělovač)
+
+(malý nadpis)7. Práva organizátora
+
+Organizátor má právo:
+
+(seznam)
+Kdykoliv upravit pravidla soutěže
+Vyloučit účastníka za porušení pravidel bez náhrady
+Rozhodovat o sporných situacích s konečnou platností
+Upravovat bodové ohodnocení aktivit
+Pozastavit nebo ukončit soutěž
+Odmítnout publikaci článku bez udání důvodu
+(konec seznamu)
+
+(oddělovač)
+
+(malý nadpis)8. Průběh soutěže
+
+(číslovaný seznam)
+Soutěž probíhá kontinuálně po dobu stanovenou organizátorem.
+Výsledky jsou průběžně zobrazovány na žebříčku.
+Organizátor může vyhlásit speciální kola nebo soutěže.
+O případných výhrách a cenách rozhoduje organizátor.
+(konec seznamu)
+
+(oddělovač)
+
+(malý nadpis)9. Ceny a odměny
+
+(seznam)
+Hlavní ceny určuje organizátor dle svého uvážení.
+Menší odměny lze získat v obchůdku za body.
+Organizátor si vyhrazuje právo změnit nebo zrušit ceny.
+Ceny nelze vyměnit za peníze.
+(konec seznamu)
+
+(oddělovač)
+
+(malý nadpis)10. Závěrečná ustanovení
+
+(boxík zeleně)
+Účastí v soutěži vyjadřujete souhlas s těmito pravidly a zavazujete se je dodržovat.
+(konec boxíku)
+
+(seznam)
+Tato pravidla nabývají účinnosti dnem zveřejnění.
+Organizátor si vyhrazuje právo na konečný výklad pravidel.
+V případě dotazů kontaktujte organizátora přes interní poštu.
+(konec seznamu)`;
 
 // Výchozí text ochrany OU s LvZJ formátováním
 const DEFAULT_OCHRANA_OU = `(nadpis)Ochrana osobních údajů
 
-(tučně)1. Správce údajů
-Správcem vašich osobních údajů je organizátor této soutěže.
+(oddělovač)
 
-(tučně)2. Zpracovávané údaje
-V rámci soutěže zpracováváme tyto údaje:
-• E-mailová adresa (pro přihlášení a komunikaci)
-• Uživatelské jméno (veřejně zobrazováno)
-• Volitelně: avatar a bio
-• Obsah vytvořený uživatelem (články, tipy, hodnocení, zprávy)
-• Body a historie nákupů
-• Role v systému
+(boxík modře zarovnat-na-střed)
+Informace o zpracování osobních údajů v souladu s (tučně)Nařízením GDPR(konec tučně)
+(Nařízení Evropského parlamentu a Rady (EU) 2016/679)
+(konec boxíku)
 
-(tučně)3. Účel zpracování
-Vaše údaje zpracováváme za účelem:
-• Umožnění účasti v soutěži
-• Zobrazení na žebříčku a v profilu
-• Provoz obchůdku
-• Komunikace mezi účastníky a organizátory
-• Moderace obsahu
+(oddělovač)
 
-(tučně)4. Právní základ
-Zpracování probíhá na základě vašeho souhlasu (registrací do soutěže) a oprávněného zájmu organizátora.
+(malý nadpis)1. Správce osobních údajů
 
-(tučně)5. Doba uchování
-Údaje uchováváme po dobu trvání soutěže a následně až 3 roky pro případné reklamace a archivaci.
+Správcem vašich osobních údajů je organizátor této soutěže. Kontaktovat jej můžete prostřednictvím interní pošty na tomto webu.
 
-(tučně)6. Vaše práva
-Máte právo na:
-• Přístup ke svým údajům
-• Opravu nepřesných údajů
-• Výmaz údajů (právo být zapomenut)
-• Omezení zpracování
-• Přenositelnost údajů
-• Vznesení námitky
-• Podání stížnosti u ÚOOÚ
+(oddělovač)
 
-(boxík)Pro uplatnění práv kontaktujte organizátora nebo využijte formulář níže.(konec boxíku)
+(malý nadpis)2. Zpracovávané osobní údaje
 
-(tučně)7. Žádost o smazání údajů
-Po podání žádosti budou:
-• Anonymizovány údaje ve vašem profilu
-• Smazány vaše články, tipy a hodnocení
-• Odstraněna historie nákupů
-• Zrušen váš účet
+(tučně)Povinné údaje:(konec tučně)
+(seznam)
+E-mailová adresa (pro přihlášení a komunikaci)
+Uživatelské jméno (veřejně zobrazováno v soutěži)
+(konec seznamu)
 
-(tučně)8. Zabezpečení údajů
-• Data jsou uložena na zabezpečených serverech
-• Komunikace probíhá přes šifrované spojení (HTTPS)
-• Přístup k údajům mají pouze oprávněné osoby
+(tučně)Volitelné údaje:(konec tučně)
+(seznam)
+Profilový obrázek (avatar)
+Bio / popis profilu
+(konec seznamu)
 
-(tučně)9. Cookies
-Používáme pouze nezbytné technické cookies pro fungování webu.
+(tučně)Automaticky generované údaje:(konec tučně)
+(seznam)
+Datum registrace
+Počet bodů a historie jejich změn
+Role v systému (uživatel, pomocník, organizátor)
+(konec seznamu)
 
-(tučně)10. Změny podmínek
-O změnách v ochraně osobních údajů budete informováni na webu.`;
+(tučně)Uživatelem vytvořený obsah:(konec tučně)
+(seznam)
+Články a jejich hodnocení
+Tipy v tipovačkách
+Zprávy v interní poště
+Historie nákupů v obchůdku
+(konec seznamu)
+
+(oddělovač)
+
+(malý nadpis)3. Účel zpracování
+
+Vaše údaje zpracováváme za následujícími účely:
+
+(číslovaný seznam)
+(tučně)Provoz soutěže(konec tučně) – umožnění účasti, počítání bodů, zobrazení na žebříčku
+(tučně)Komunikace(konec tučně) – zasílání zpráv mezi účastníky a organizátory
+(tučně)Moderace(konec tučně) – kontrola dodržování pravidel a kvality obsahu
+(tučně)Obchůdek(konec tučně) – zpracování objednávek a sledování nákupů
+(tučně)Statistiky(konec tučně) – anonymní statistiky o účasti a aktivitě
+(konec seznamu)
+
+(oddělovač)
+
+(malý nadpis)4. Právní základ zpracování
+
+(boxík šedě)
+Zpracování osobních údajů probíhá na základě:
+(seznam)
+(tučně)Souhlasu(konec tučně) – vyjádřeného registrací do soutěže
+(tučně)Oprávněného zájmu(konec tučně) – organizátora na řádném průběhu soutěže
+(tučně)Plnění smlouvy(konec tučně) – účast v soutěži jako smluvní vztah
+(konec seznamu)
+(konec boxíku)
+
+(oddělovač)
+
+(malý nadpis)5. Doba uchování údajů
+
+(seznam)
+Údaje jsou uchovávány po dobu (tučně)trvání soutěže(konec tučně).
+Po skončení soutěže jsou údaje uchovávány max. (tučně)3 roky(konec tučně) pro archivní účely.
+Na vyžádání jsou údaje smazány (tučně)do 30 dnů(konec tučně) od schválení žádosti.
+(konec seznamu)
+
+(oddělovač)
+
+(malý nadpis)6. Vaše práva
+
+Podle GDPR máte následující práva:
+
+(boxík zeleně)
+(tučně)✓ Právo na přístup(konec tučně) – můžete požádat o kopii svých údajů
+(tučně)✓ Právo na opravu(konec tučně) – můžete opravit nepřesné údaje ve svém profilu
+(tučně)✓ Právo na výmaz(konec tučně) – můžete požádat o smazání všech údajů
+(tučně)✓ Právo na omezení(konec tučně) – můžete požádat o omezení zpracování
+(tučně)✓ Právo na přenositelnost(konec tučně) – můžete požádat o export údajů
+(tučně)✓ Právo vznést námitku(konec tučně) – můžete nesouhlasit se zpracováním
+(tučně)✓ Právo podat stížnost(konec tučně) – u Úřadu pro ochranu osobních údajů (ÚOOÚ)
+(konec boxíku)
+
+(oddělovač)
+
+(malý nadpis)7. Žádost o smazání údajů
+
+(boxík červeně)
+(tučně)⚠️ UPOZORNĚNÍ(konec tučně)
+Po schválení žádosti o smazání budou (tučně)nenávratně odstraněny(konec tučně):
+(konec boxíku)
+
+(spoiler Co přesně bude smazáno?)
+(seznam)
+Všechny vaše osobní údaje v profilu
+Všechny vaše články
+Všechny vaše tipy v tipovačkách
+Všechna vaše hodnocení článků
+Všechny vaše zprávy v poště
+Kompletní historie nákupů v obchůdku
+Váš uživatelský účet
+(konec seznamu)
+
+Po smazání (tučně červený)NEBUDE MOŽNÉ(konec tučně) data obnovit ani pokračovat v soutěži pod stejným účtem.
+(konec spoileru)
+
+(oddělovač)
+
+(malý nadpis)8. Zabezpečení údajů
+
+Vaše údaje chráníme následujícími opatřeními:
+
+(seznam)
+Data jsou uložena na zabezpečených serverech
+Veškerá komunikace probíhá přes šifrované spojení (tučně)HTTPS(konec tučně)
+Přístup k údajům mají pouze oprávněné osoby (organizátoři)
+Hesla jsou ukládána v zašifrované podobě
+Pravidelné zálohování dat
+(konec seznamu)
+
+(oddělovač)
+
+(malý nadpis)9. Sdílení údajů s třetími stranami
+
+(seznam)
+Vaše údaje (tučně zeleně)NESDÍLÍME(konec tučně) s třetími stranami pro komerční účely.
+Veřejně viditelné jsou pouze: uživatelské jméno, avatar, bio, body a vaše články.
+Údaje mohou být zpřístupněny pouze na základě zákonného požadavku.
+(konec seznamu)
+
+(oddělovač)
+
+(malý nadpis)10. Cookies a technické údaje
+
+(seznam)
+Používáme pouze (tučně)nezbytné technické cookies(konec tučně) pro fungování webu.
+Nepoužíváme reklamní ani sledovací cookies.
+Pro přihlášení je nutné mít cookies povoleny.
+(konec seznamu)
+
+(oddělovač)
+
+(malý nadpis)11. Změny těchto podmínek
+
+(seznam)
+O změnách v ochraně osobních údajů budete informováni na webu.
+Aktuální verze podmínek je vždy dostupná na této stránce.
+Pokračováním v účasti souhlasíte s aktuálním zněním.
+(konec seznamu)
+
+(oddělovač)
+
+(malý nadpis)12. Kontakt
+
+(boxík modře)
+V případě dotazů ohledně zpracování osobních údajů nebo pro uplatnění svých práv kontaktujte organizátora prostřednictvím (tučně)interní pošty(konec tučně) na tomto webu.
+(konec boxíku)
+
+(oddělovač)
+
+(citace GDPR – Článek 17 autor)
+„Subjekt údajů má právo na to, aby správce bez zbytečného odkladu vymazal osobní údaje, které se daného subjektu údajů týkají."
+(konec citace)`;
 
 const PravidlaOchranaOU = () => {
   const { user } = useAuth();
