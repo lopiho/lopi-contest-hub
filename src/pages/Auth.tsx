@@ -8,8 +8,10 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Trophy, Sparkles, Mail, Lock, User } from 'lucide-react';
+import { Trophy, Sparkles, Mail, Lock, User, ArrowLeft } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 
 const loginSchema = z.object({
@@ -25,15 +27,70 @@ export default function Auth() {
   const navigate = useNavigate();
   const { user, signIn, signUp } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
   
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [signupForm, setSignupForm] = useState({ email: '', password: '', username: '' });
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!z.string().email().safeParse(resetEmail).success) {
+      toast.error('Neplatný email');
+      return;
+    }
+
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+      redirectTo: `${window.location.origin}/auth?reset=true`,
+    });
+    setLoading(false);
+
+    if (error) {
+      toast.error('Chyba při odesílání emailu');
+    } else {
+      toast.success('Email s odkazem pro reset hesla byl odeslán!');
+      setShowForgotPassword(false);
+      setResetEmail('');
+    }
+  };
+
+  const [searchParams] = useSearchParams();
+  const isResetMode = searchParams.get('reset') === 'true';
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
   useEffect(() => {
-    if (user) {
+    if (user && !isResetMode) {
       navigate('/');
     }
-  }, [user, navigate]);
+  }, [user, navigate, isResetMode]);
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (newPassword.length < 6) {
+      toast.error('Heslo musí mít alespoň 6 znaků');
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      toast.error('Hesla se neshodují');
+      return;
+    }
+
+    setLoading(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setLoading(false);
+
+    if (error) {
+      toast.error('Chyba při změně hesla');
+    } else {
+      toast.success('Heslo bylo úspěšně změněno!');
+      navigate('/');
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,8 +142,112 @@ export default function Auth() {
     }
   };
 
+  if (isResetMode) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-hero p-4">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-20 left-10 w-32 h-32 bg-primary/20 rounded-full blur-3xl animate-float" />
+          <div className="absolute bottom-20 right-10 w-48 h-48 bg-accent/20 rounded-full blur-3xl animate-float" style={{ animationDelay: '1s' }} />
+        </div>
+
+        <Card className="w-full max-w-md relative z-10 shadow-hero border-0 bg-card/95 backdrop-blur-sm animate-scale-in">
+          <CardHeader className="text-center space-y-4 pb-2">
+            <div className="mx-auto w-16 h-16 bg-gradient-primary rounded-2xl flex items-center justify-center shadow-glow">
+              <Lock className="w-8 h-8 text-primary-foreground" />
+            </div>
+            <div>
+              <CardTitle className="text-2xl font-display font-bold gradient-text">
+                Nastavit nové heslo
+              </CardTitle>
+              <CardDescription className="text-muted-foreground mt-2">
+                Zadejte své nové heslo
+              </CardDescription>
+            </div>
+          </CardHeader>
+
+          <CardContent>
+            <form onSubmit={handleUpdatePassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-password" className="flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-muted-foreground" />
+                  Nové heslo
+                </Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="h-12"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirm-password" className="flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-muted-foreground" />
+                  Potvrdit heslo
+                </Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="h-12"
+                  required
+                />
+              </div>
+
+              <Button type="submit" variant="hero" size="lg" className="w-full" disabled={loading}>
+                {loading ? 'Ukládám...' : 'Změnit heslo'}
+              </Button>
+
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                onClick={() => navigate('/auth')}
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Zpět na přihlášení
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-hero p-4">
+      <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Zapomenuté heslo</DialogTitle>
+            <DialogDescription>
+              Zadejte svůj email a pošleme vám odkaz pro reset hesla.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleForgotPassword} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="reset-email">Email</Label>
+              <Input
+                id="reset-email"
+                type="email"
+                placeholder="tvuj@email.cz"
+                value={resetEmail}
+                onChange={(e) => setResetEmail(e.target.value)}
+                required
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Odesílám...' : 'Odeslat reset email'}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 left-10 w-32 h-32 bg-primary/20 rounded-full blur-3xl animate-float" />
         <div className="absolute bottom-20 right-10 w-48 h-48 bg-accent/20 rounded-full blur-3xl animate-float" style={{ animationDelay: '1s' }} />
@@ -149,6 +310,13 @@ export default function Auth() {
                     className="h-12"
                     required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPassword(true)}
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Zapomněli jste heslo?
+                  </button>
                 </div>
 
                 <Button type="submit" variant="hero" size="lg" className="w-full" disabled={loading}>
