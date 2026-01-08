@@ -14,7 +14,7 @@ import { calculateRatingStats, getRatingQuality } from '@/lib/points';
 import RatingDisplay from '@/components/RatingDisplay';
 import UserBadge, { getRoleDisplayName, getRoleBadgeColor } from '@/components/UserBadge';
 import SendMessage from '@/components/SendMessage';
-import { FileText, CheckCircle, XCircle, Star, Loader2, Coins, Clock, AlertTriangle, Sparkles, TrendingUp, HelpCircle, Plus, Image as ImageIcon, Trophy, Users, Trash2, UserPlus, Crown, Edit, Mail, Send, ShoppingBag, Package, ToggleLeft, ToggleRight, Award, BookOpen, Download, RefreshCw, BarChart3 } from 'lucide-react';
+import { FileText, CheckCircle, XCircle, Star, Loader2, Coins, Clock, AlertTriangle, Sparkles, TrendingUp, HelpCircle, Plus, Image as ImageIcon, Trophy, Users, Trash2, UserPlus, Crown, Edit, Mail, Send, ShoppingBag, Package, ToggleLeft, ToggleRight, Award, BookOpen, Download, RefreshCw, BarChart3, Ban, Lock, Music, Settings2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Navigate } from 'react-router-dom';
@@ -149,6 +149,21 @@ export default function Admin() {
   const [deletionRequests, setDeletionRequests] = useState<DeletionRequest[]>([]);
   const [requestToProcess, setRequestToProcess] = useState<DeletionRequest | null>(null);
   
+  // LvZJ command restrictions
+  const [lvzjRestrictions, setLvzjRestrictions] = useState<{id: string; command_name: string; allowed_roles: string[]; description: string | null; is_active: boolean}[]>([
+    { id: '1', command_name: 'melodie', allowed_roles: ['hudebnik'], description: 'Vkládání hudby (YouTube, Spotify)', is_active: true },
+    { id: '2', command_name: 'playlist', allowed_roles: ['hudebnik'], description: 'Vytváření playlistů', is_active: true },
+  ]);
+  const [newRestrictionOpen, setNewRestrictionOpen] = useState(false);
+  const [newRestriction, setNewRestriction] = useState({ command_name: '', allowed_roles: [] as string[], description: '' });
+  const [editingRestriction, setEditingRestriction] = useState<{id: string; command_name: string; allowed_roles: string[]; description: string | null; is_active: boolean} | null>(null);
+  
+  // Blocked users
+  const [blockedUsers, setBlockedUsers] = useState<{id: string; user_id: string; username?: string; reason: string | null; blocked_at: string; is_active: boolean}[]>([]);
+  const [blockUserOpen, setBlockUserOpen] = useState(false);
+  const [userToBlock, setUserToBlock] = useState<UserProfile | null>(null);
+  const [blockReason, setBlockReason] = useState('');
+
   // New admin functions
   const [exportingStats, setExportingStats] = useState(false);
   const [broadcastOpen, setBroadcastOpen] = useState(false);
@@ -289,6 +304,138 @@ export default function Admin() {
     } else {
       setDeletionRequests([]);
     }
+  };
+
+  // Fetch blocked users
+  const fetchBlockedUsers = async () => {
+    try {
+      const result = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/blocked_users?is_active=eq.true`, {
+        headers: {
+          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+        }
+      });
+      if (result.ok) {
+        const data = await result.json();
+        if (Array.isArray(data) && data.length > 0) {
+          const userIds = [...new Set(data.map((b: any) => b.user_id))];
+          const { data: profiles } = await supabase.from('profiles').select('id, username').in('id', userIds);
+          const profileMap = new Map(profiles?.map(p => [p.id, p.username]) || []);
+          setBlockedUsers(data.map((b: any) => ({ ...b, username: profileMap.get(b.user_id) || 'Neznámý' })));
+        }
+      }
+    } catch (e) {
+      // Table might not exist
+    }
+  };
+
+  // Block user
+  const handleBlockUser = async () => {
+    if (!userToBlock) return;
+    setProcessing(true);
+    
+    try {
+      const session = await supabase.auth.getSession();
+      const result = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/blocked_users`, {
+        method: 'POST',
+        headers: {
+          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          'Authorization': `Bearer ${session.data.session?.access_token}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({
+          user_id: userToBlock.id,
+          blocked_by: user?.id,
+          reason: blockReason || null,
+        })
+      });
+      
+      if (result.ok) {
+        toast.success(`Uživatel @${userToBlock.username} zablokován`);
+        // Send message to user
+        await supabase.from('messages').insert({
+          sender_id: user?.id,
+          recipient_id: userToBlock.id,
+          subject: '🚫 Účet zablokován',
+          content: `Tvůj účet byl zablokován organizátorem.${blockReason ? `\n\nDůvod: ${blockReason}` : ''}`
+        });
+        fetchBlockedUsers();
+      } else {
+        toast.error('Chyba při blokování uživatele');
+      }
+    } catch (e) {
+      toast.error('Chyba při blokování uživatele');
+    }
+    
+    setBlockUserOpen(false);
+    setUserToBlock(null);
+    setBlockReason('');
+    setProcessing(false);
+  };
+
+  // Unblock user
+  const handleUnblockUser = async (blockId: string, userId: string) => {
+    setProcessing(true);
+    
+    try {
+      const session = await supabase.auth.getSession();
+      const result = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/blocked_users?id=eq.${blockId}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          'Authorization': `Bearer ${session.data.session?.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ is_active: false, unblocked_at: new Date().toISOString() })
+      });
+      
+      if (result.ok) {
+        toast.success('Uživatel odblokován');
+        setBlockedUsers(blockedUsers.filter(b => b.id !== blockId));
+      } else {
+        toast.error('Chyba při odblokování');
+      }
+    } catch (e) {
+      toast.error('Chyba při odblokování');
+    }
+    
+    setProcessing(false);
+  };
+
+  // Update LvZJ restriction
+  const handleUpdateRestriction = (id: string, allowedRoles: string[]) => {
+    setLvzjRestrictions(prev => prev.map(r => 
+      r.id === id ? { ...r, allowed_roles: allowedRoles } : r
+    ));
+    toast.success('Omezení aktualizováno');
+  };
+
+  // Add new LvZJ restriction
+  const handleAddRestriction = () => {
+    if (!newRestriction.command_name.trim()) {
+      toast.error('Zadej název příkazu');
+      return;
+    }
+    
+    const newId = (lvzjRestrictions.length + 1).toString();
+    setLvzjRestrictions([...lvzjRestrictions, {
+      id: newId,
+      command_name: newRestriction.command_name.toLowerCase().trim(),
+      allowed_roles: newRestriction.allowed_roles,
+      description: newRestriction.description || null,
+      is_active: true
+    }]);
+    
+    setNewRestriction({ command_name: '', allowed_roles: [], description: '' });
+    setNewRestrictionOpen(false);
+    toast.success('Omezení přidáno');
+  };
+
+  // Remove LvZJ restriction
+  const handleRemoveRestriction = (id: string) => {
+    setLvzjRestrictions(prev => prev.filter(r => r.id !== id));
+    toast.success('Omezení odstraněno');
   };
   const handleApproveDeletion = async () => {
     if (!requestToProcess) return;
@@ -978,6 +1125,7 @@ lopi`;
             <TabsTrigger value="tipovacky" className="gap-2"><HelpCircle className="w-4 h-4" />Tipovačky</TabsTrigger>
             <TabsTrigger value="obchudek" className="gap-2"><ShoppingBag className="w-4 h-4" />Obchůdek</TabsTrigger>
             <TabsTrigger value="users" className="gap-2"><Crown className="w-4 h-4" />Uživatelé</TabsTrigger>
+            <TabsTrigger value="lvzj" className="gap-2"><BookOpen className="w-4 h-4" />LvZJ</TabsTrigger>
             <TabsTrigger value="gdpr" className="gap-2">
               <Trash2 className="w-4 h-4" />
               GDPR {deletionRequests.length > 0 && <Badge variant="destructive" className="ml-1">{deletionRequests.length}</Badge>}
@@ -1330,9 +1478,215 @@ lopi`;
                       <UserPlus className="w-4 h-4" />
                       Přidat roli
                     </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full gap-2 text-destructive" 
+                      onClick={() => { setUserToBlock(u); setBlockUserOpen(true); }}
+                    >
+                      <Ban className="w-4 h-4" />
+                      Zablokovat
+                    </Button>
                   </CardContent>
                 </Card>)}
             </div>
+            
+            {/* Blocked Users */}
+            {blockedUsers.length > 0 && (
+              <div className="mt-8">
+                <h3 className="text-lg font-display font-bold mb-4 flex items-center gap-2">
+                  <Ban className="w-5 h-5 text-destructive" />
+                  Zablokovaní uživatelé ({blockedUsers.length})
+                </h3>
+                <div className="space-y-2">
+                  {blockedUsers.map(b => (
+                    <Card key={b.id} className="shadow-card border-destructive/30">
+                      <CardContent className="pt-4 flex items-center justify-between">
+                        <div>
+                          <span className="font-medium">@{b.username}</span>
+                          <span className="text-sm text-muted-foreground ml-2">
+                            {new Date(b.blocked_at).toLocaleDateString('cs-CZ')}
+                          </span>
+                          {b.reason && <p className="text-sm text-muted-foreground">{b.reason}</p>}
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleUnblockUser(b.id, b.user_id)}
+                          disabled={processing}
+                        >
+                          Odblokovat
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* LvZJ Tab */}
+          <TabsContent value="lvzj" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-display font-bold flex items-center gap-2">
+                <Settings2 className="w-5 h-5" />
+                Správa omezení LvZJ příkazů
+              </h2>
+              <Dialog open={newRestrictionOpen} onOpenChange={setNewRestrictionOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="hero" className="gap-2">
+                    <Plus className="w-4 h-4" />
+                    Nové omezení
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Přidat omezení příkazu</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label>Název příkazu (bez závorek)</Label>
+                      <Input 
+                        placeholder="např. melodie" 
+                        value={newRestriction.command_name}
+                        onChange={e => setNewRestriction({...newRestriction, command_name: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Popis (volitelné)</Label>
+                      <Input 
+                        placeholder="Co příkaz dělá..." 
+                        value={newRestriction.description}
+                        onChange={e => setNewRestriction({...newRestriction, description: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Povolené role (prázdné = všichni)</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {['hudebnik', 'veverka', 'vedouci_prodejny', 'helper'].map(role => (
+                          <Badge 
+                            key={role}
+                            variant={newRestriction.allowed_roles.includes(role) ? "default" : "outline"}
+                            className="cursor-pointer"
+                            onClick={() => {
+                              const roles = newRestriction.allowed_roles.includes(role)
+                                ? newRestriction.allowed_roles.filter(r => r !== role)
+                                : [...newRestriction.allowed_roles, role];
+                              setNewRestriction({...newRestriction, allowed_roles: roles});
+                            }}
+                          >
+                            {role === 'hudebnik' ? '🎵 Hudebník' : 
+                             role === 'veverka' ? '🐿️ Veverka' :
+                             role === 'vedouci_prodejny' ? '🛒 Vedoucí' : 
+                             'Pomocníček'}
+                          </Badge>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground">Organizátor má vždy přístup ke všem příkazům.</p>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="ghost" onClick={() => setNewRestrictionOpen(false)}>Zrušit</Button>
+                    <Button variant="hero" onClick={handleAddRestriction}>
+                      <Plus className="w-4 h-4 mr-1" />
+                      Přidat
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Lock className="w-5 h-5" />
+                  Aktivní omezení
+                </CardTitle>
+                <CardDescription>
+                  Příkazy, které jsou omezeny na určité role. Organizátor má vždy přístup ke všem.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {lvzjRestrictions.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">Žádná omezení nejsou nastavena</p>
+                ) : (
+                  <div className="space-y-4">
+                    {lvzjRestrictions.map(restriction => (
+                      <div key={restriction.id} className="p-4 bg-muted/50 rounded-lg flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <code className="bg-primary/10 text-primary px-2 py-0.5 rounded font-mono">
+                              ({restriction.command_name})
+                            </code>
+                            {restriction.command_name === 'melodie' && <Music className="w-4 h-4 text-purple-500" />}
+                          </div>
+                          {restriction.description && (
+                            <p className="text-sm text-muted-foreground mb-2">{restriction.description}</p>
+                          )}
+                          <div className="flex flex-wrap gap-1">
+                            {['hudebnik', 'veverka', 'vedouci_prodejny', 'helper'].map(role => (
+                              <Badge 
+                                key={role}
+                                variant={restriction.allowed_roles.includes(role) ? "default" : "outline"}
+                                className="cursor-pointer text-xs"
+                                onClick={() => {
+                                  const roles = restriction.allowed_roles.includes(role)
+                                    ? restriction.allowed_roles.filter(r => r !== role)
+                                    : [...restriction.allowed_roles, role];
+                                  handleUpdateRestriction(restriction.id, roles);
+                                }}
+                              >
+                                {role === 'hudebnik' ? '🎵' : 
+                                 role === 'veverka' ? '🐿️' :
+                                 role === 'vedouci_prodejny' ? '🛒' : 
+                                 '👑'}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => handleRemoveRestriction(restriction.id)}
+                        >
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Dostupné role</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="p-3 bg-muted/50 rounded-lg text-center">
+                    <span className="text-2xl">👑</span>
+                    <p className="font-medium text-sm">Organizátor</p>
+                    <p className="text-xs text-muted-foreground">Všechny příkazy</p>
+                  </div>
+                  <div className="p-3 bg-muted/50 rounded-lg text-center">
+                    <span className="text-2xl">🎵</span>
+                    <p className="font-medium text-sm">Hudebník</p>
+                    <p className="text-xs text-muted-foreground">Hudební příkazy</p>
+                  </div>
+                  <div className="p-3 bg-muted/50 rounded-lg text-center">
+                    <span className="text-2xl">🐿️</span>
+                    <p className="font-medium text-sm">Veverka</p>
+                    <p className="text-xs text-muted-foreground">Redakční příkazy</p>
+                  </div>
+                  <div className="p-3 bg-muted/50 rounded-lg text-center">
+                    <span className="text-2xl">🛒</span>
+                    <p className="font-medium text-sm">Vedoucí prodejny</p>
+                    <p className="text-xs text-muted-foreground">Obchodní příkazy</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* GDPR Tab */}
@@ -1650,6 +2004,45 @@ lopi`;
               <Button variant="destructive" onClick={handleApproveDeletion} disabled={processing}>
                 {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                 <span className="ml-2">Smazat vše</span>
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Block User Dialog */}
+        <Dialog open={blockUserOpen} onOpenChange={setBlockUserOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Ban className="w-5 h-5 text-destructive" />
+                Zablokovat uživatele
+              </DialogTitle>
+            </DialogHeader>
+            {userToBlock && (
+              <div className="space-y-4 py-4">
+                <div className="p-4 bg-muted rounded-lg">
+                  <p className="font-medium">@{userToBlock.username}</p>
+                  <p className="text-sm text-muted-foreground">{userToBlock.points} bodů</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Důvod blokace (volitelné)</Label>
+                  <Textarea 
+                    value={blockReason} 
+                    onChange={(e) => setBlockReason(e.target.value)}
+                    placeholder="Důvod pro zablokování..."
+                    rows={3}
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Uživateli bude odeslána zpráva o zablokování.
+                </p>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => { setBlockUserOpen(false); setUserToBlock(null); }}>Zrušit</Button>
+              <Button variant="destructive" onClick={handleBlockUser} disabled={processing}>
+                {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />}
+                <span className="ml-2">Zablokovat</span>
               </Button>
             </DialogFooter>
           </DialogContent>

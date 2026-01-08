@@ -16,12 +16,34 @@ export const LvZJProvider = ({ children, userRoles }: { children: React.ReactNod
   <LvZJContext.Provider value={{ userRoles }}>{children}</LvZJContext.Provider>
 );
 
+// Command restrictions - can be overridden from database
+// Format: { commandName: allowedRoles[] }
+const defaultCommandRestrictions: Record<string, string[]> = {
+  'melodie': ['hudebnik'],
+  'playlist': ['hudebnik'],
+};
+
+// Store for dynamic restrictions (loaded from database)
+let dynamicRestrictions: Record<string, string[]> = {};
+
+// Function to update restrictions from database
+export function setLvzjRestrictions(restrictions: Record<string, string[]>) {
+  dynamicRestrictions = restrictions;
+}
+
 // Check if user has permission for a command
-const hasPermission = (requiredRoles: string[], userRoles: string[]): boolean => {
+export const hasPermission = (commandName: string, userRoles: string[]): boolean => {
   // Organizátor může všechno
   if (userRoles.includes('organizer')) return true;
+  
+  // Get allowed roles for this command
+  const allowedRoles = dynamicRestrictions[commandName] || defaultCommandRestrictions[commandName];
+  
+  // If no restriction exists, everyone can use it
+  if (!allowedRoles || allowedRoles.length === 0) return true;
+  
   // Check if user has any of the required roles
-  return requiredRoles.some(role => userRoles.includes(role));
+  return allowedRoles.some(role => userRoles.includes(role));
 };
 
 interface ParseResult {
@@ -426,7 +448,7 @@ export function parseLvZJ(text: string, userRoles: string[] = []): React.ReactNo
 
   // Process playlist (Hudebník only)
   processedText = processedText.replace(/\(playlist\)([\s\S]*?)\(konec playlistu?\)/gi, (match, content) => {
-    if (!hasPermission(['hudebnik'], userRoles)) {
+    if (!hasPermission('playlist', userRoles)) {
       return '{{RESTRICTED:playlist}}';
     }
     const urls = content.trim().split('\n').filter((line: string) => line.trim().startsWith('http'));
@@ -613,7 +635,7 @@ function parseInline(text: string, userRoles: string[] = []): React.ReactNode {
       // Melodie (Hudebník only)
       const melodieMatch = lowerCommand.match(/melodie\s+(https?:\/\/\S+)/);
       if (melodieMatch) {
-        if (hasPermission(['hudebnik'], userRoles)) {
+        if (hasPermission('melodie', userRoles)) {
           parts.push(<MelodieEmbed key={keyCounter++} url={melodieMatch[1]} />);
         } else {
           parts.push(<RestrictedContent key={keyCounter++} commandName="melodie" />);
