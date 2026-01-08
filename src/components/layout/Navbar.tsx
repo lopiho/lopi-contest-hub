@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { 
   Trophy, 
   FileText, 
-  Camera, 
   HelpCircle, 
   ShoppingBag, 
   LogOut, 
@@ -24,7 +23,6 @@ const navItems = [
   { href: '/', label: 'Domů', icon: Trophy },
   { href: '/clankovnice', label: 'Článkovnice', icon: FileText },
   { href: '/tipovacky', label: 'Tipovačky', icon: HelpCircle },
-  { href: '/fotosoutez', label: 'Fotosoutěž', icon: Camera },
   { href: '/obchudek', label: 'Obchůdek', icon: ShoppingBag },
 ];
 

@@ -595,8 +595,8 @@ lopi`;
       error
     } = await supabase.from('user_roles').insert({
       user_id: selectedUserForRole.id,
-      role: newRole as 'user' | 'helper' | 'organizer'
-    });
+      role: newRole
+    } as any);
     if (error) {
       toast.error('Chyba při přidělování role');
     } else {
@@ -615,7 +615,7 @@ lopi`;
     setProcessing(true);
     const {
       error
-    } = await supabase.from('user_roles').delete().eq('user_id', userId).eq('role', role as 'user' | 'helper' | 'organizer');
+    } = await supabase.from('user_roles').delete().eq('user_id', userId).eq('role', role as any);
     if (error) {
       toast.error('Chyba při odebírání role');
     } else {
@@ -1519,8 +1519,11 @@ lopi`;
                       <SelectValue placeholder="Vyber roli..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="helper">Helper (pomocník)</SelectItem>
+                      <SelectItem value="helper">Pomocníček</SelectItem>
                       <SelectItem value="organizer">Organizátor</SelectItem>
+                      <SelectItem value="veverka">🐿️ Veverka (redakce)</SelectItem>
+                      <SelectItem value="hudebnik">🎵 Hudebník (zábava)</SelectItem>
+                      <SelectItem value="vedouci_prodejny">🛒 Vedoucí prodejny</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
