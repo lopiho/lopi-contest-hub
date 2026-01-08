@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Clankovnice from "./pages/Clankovnice";
 import Tipovacky from "./pages/Tipovacky";
+import Redakce from "./pages/Redakce";
 
 import Obchudek from "./pages/Obchudek";
 import Admin from "./pages/Admin";
@@ -35,6 +36,7 @@ const App = () => (
             
             <Route path="/obchudek" element={<Layout><Obchudek /></Layout>} />
             <Route path="/admin" element={<Layout><Admin /></Layout>} />
+            <Route path="/redakce" element={<Layout><Redakce /></Layout>} />
             <Route path="/pravidla-ochrana-ou" element={<Layout><PravidlaOchranaOU /></Layout>} />
             <Route path="/lvzj" element={<Layout><LvZJ /></Layout>} />
             <Route path="/posta" element={<Layout><Posta /></Layout>} />

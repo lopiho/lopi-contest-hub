@@ -12,7 +12,8 @@ import {
   X,
   Coins,
   Shield,
-  Mail
+  Mail,
+  Squirrel
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -33,6 +34,7 @@ export default function Navbar() {
   const [points, setPoints] = useState(0);
   const [username, setUsername] = useState('');
   const [isOrganizer, setIsOrganizer] = useState(false);
+  const [isVeverka, setIsVeverka] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
 
   useEffect(() => {
@@ -66,8 +68,10 @@ export default function Navbar() {
       .select('role')
       .eq('user_id', user.id);
     
-    const hasOrgRole = data?.some(r => r.role === 'organizer' || r.role === 'helper');
-    setIsOrganizer(hasOrgRole || false);
+    const roles = data?.map(r => r.role as string) || [];
+    const hasOrgRole = roles.some(r => r === 'organizer' || r === 'helper');
+    setIsOrganizer(hasOrgRole);
+    setIsVeverka(roles.includes('veverka') || hasOrgRole);
   };
 
   const fetchUnreadMessages = async () => {
@@ -121,6 +125,18 @@ export default function Navbar() {
                 </Link>
               );
             })}
+            {isVeverka && (
+              <Link to="/redakce">
+                <Button 
+                  variant={location.pathname === '/redakce' ? "default" : "ghost"} 
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Squirrel className="w-4 h-4" />
+                  Redakce
+                </Button>
+              </Link>
+            )}
             {isOrganizer && (
               <Link to="/admin">
                 <Button 
@@ -224,6 +240,18 @@ export default function Navbar() {
                   )}
                 </Button>
               </Link>
+
+              {isVeverka && (
+                <Link to="/redakce" onClick={() => setMobileMenuOpen(false)}>
+                  <Button 
+                    variant={location.pathname === '/redakce' ? "default" : "ghost"} 
+                    className="w-full justify-start gap-3"
+                  >
+                    <Squirrel className="w-5 h-5" />
+                    Redakce
+                  </Button>
+                </Link>
+              )}
 
               {isOrganizer && (
                 <Link to="/admin" onClick={() => setMobileMenuOpen(false)}>
