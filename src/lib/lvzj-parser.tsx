@@ -1,9 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, createContext, useContext } from 'react';
 import { cn } from '@/lib/utils';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Music, List, Lock } from 'lucide-react';
 
 // LvZJ - Lopiho značkovací jazyk
 // Based on Alíkův značkovací jazyk
+
+// Context for user roles - allows role-based command restrictions
+interface LvZJContextType {
+  userRoles: string[];
+}
+
+const LvZJContext = createContext<LvZJContextType>({ userRoles: [] });
+
+export const LvZJProvider = ({ children, userRoles }: { children: React.ReactNode; userRoles: string[] }) => (
+  <LvZJContext.Provider value={{ userRoles }}>{children}</LvZJContext.Provider>
+);
+
+// Check if user has permission for a command
+const hasPermission = (requiredRoles: string[], userRoles: string[]): boolean => {
+  // Organizátor může všechno
+  if (userRoles.includes('organizer')) return true;
+  // Check if user has any of the required roles
+  return requiredRoles.some(role => userRoles.includes(role));
+};
 
 interface ParseResult {
   content: React.ReactNode;
@@ -139,6 +158,122 @@ const Quote = ({ children, author, source }: { children: React.ReactNode; author
   </blockquote>
 );
 
+// Music embed component for Hudebník
+const MelodieEmbed = ({ url }: { url: string }) => {
+  // Support YouTube, Spotify, SoundCloud
+  const getEmbedUrl = (url: string): { type: string; embedUrl: string } | null => {
+    // YouTube
+    const youtubeMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+    if (youtubeMatch) {
+      return { type: 'youtube', embedUrl: `https://www.youtube.com/embed/${youtubeMatch[1]}` };
+    }
+    
+    // Spotify track/album/playlist
+    const spotifyMatch = url.match(/spotify\.com\/(track|album|playlist)\/([a-zA-Z0-9]+)/);
+    if (spotifyMatch) {
+      return { type: 'spotify', embedUrl: `https://open.spotify.com/embed/${spotifyMatch[1]}/${spotifyMatch[2]}` };
+    }
+    
+    // SoundCloud - just return the URL for now, would need oEmbed API
+    if (url.includes('soundcloud.com')) {
+      return { type: 'soundcloud', embedUrl: url };
+    }
+    
+    return null;
+  };
+
+  const embed = getEmbedUrl(url);
+  
+  if (!embed) {
+    return (
+      <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-purple-500 hover:underline">
+        <Music className="w-4 h-4" />
+        <span>Přehrát melodii</span>
+      </a>
+    );
+  }
+
+  if (embed.type === 'youtube') {
+    return (
+      <div className="my-4 rounded-lg overflow-hidden shadow-lg max-w-lg">
+        <iframe
+          width="100%"
+          height="200"
+          src={embed.embedUrl}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          className="border-0"
+        />
+      </div>
+    );
+  }
+
+  if (embed.type === 'spotify') {
+    return (
+      <div className="my-4 rounded-lg overflow-hidden shadow-lg max-w-lg">
+        <iframe
+          src={embed.embedUrl}
+          width="100%"
+          height="152"
+          allow="encrypted-media"
+          className="border-0"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-purple-500 hover:underline">
+      <Music className="w-4 h-4" />
+      <span>Přehrát melodii</span>
+    </a>
+  );
+};
+
+// Playlist component for Hudebník
+const PlaylistEmbed = ({ items }: { items: string[] }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className="my-4 p-4 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-xl border border-purple-500/20">
+      <div className="flex items-center gap-2 mb-3">
+        <List className="w-5 h-5 text-purple-500" />
+        <span className="font-semibold text-purple-600 dark:text-purple-400">Playlist ({items.length} skladeb)</span>
+      </div>
+      <div className="space-y-2">
+        {items.map((url, index) => (
+          <div 
+            key={index} 
+            className={cn(
+              "flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all",
+              index === currentIndex ? "bg-purple-500/20" : "hover:bg-purple-500/10"
+            )}
+            onClick={() => setCurrentIndex(index)}
+          >
+            <span className="text-sm text-muted-foreground w-6">{index + 1}.</span>
+            <Music className="w-4 h-4 text-purple-500" />
+            <span className="text-sm truncate flex-1">{url}</span>
+            {index === currentIndex && <span className="text-xs text-purple-500">▶</span>}
+          </div>
+        ))}
+      </div>
+      <div className="mt-4">
+        <MelodieEmbed url={items[currentIndex]} />
+      </div>
+    </div>
+  );
+};
+
+// Restricted content placeholder
+const RestrictedContent = ({ commandName }: { commandName: string }) => (
+  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-muted/50 text-muted-foreground text-sm rounded">
+    <Lock className="w-3 h-3" />
+    <span className="text-xs">{commandName}</span>
+  </span>
+);
+
 // Parse date from Czech format
 const parseCzechDate = (dateStr: string): Date | null => {
   // Try formats: "1. 9. 2026 8:00", "1.9.2026", "1. 9. 2026"
@@ -252,8 +387,8 @@ const parseStyleCommand = (command: string): string => {
   return classes.join(' ');
 };
 
-// Main parser
-export function parseLvZJ(text: string): React.ReactNode {
+// Main parser with role support
+export function parseLvZJ(text: string, userRoles: string[] = []): React.ReactNode {
   if (!text) return null;
 
   const elements: React.ReactNode[] = [];
@@ -289,6 +424,15 @@ export function parseLvZJ(text: string): React.ReactNode {
     return `{{QUOTE:${author || ''}:${content}}}`;
   });
 
+  // Process playlist (Hudebník only)
+  processedText = processedText.replace(/\(playlist\)([\s\S]*?)\(konec playlistu?\)/gi, (match, content) => {
+    if (!hasPermission(['hudebnik'], userRoles)) {
+      return '{{RESTRICTED:playlist}}';
+    }
+    const urls = content.trim().split('\n').filter((line: string) => line.trim().startsWith('http'));
+    return `{{PLAYLIST:${urls.join('|||')}}}`;
+  });
+
   // Split by lines for line-based processing
   const lines = processedText.split('\n');
   const processedLines: React.ReactNode[] = [];
@@ -302,7 +446,7 @@ export function parseLvZJ(text: string): React.ReactNode {
       if (listType === 'ol') {
         processedLines.push(
           <ol key={keyCounter++} className="list-decimal list-inside my-2 space-y-1">
-            {listItems.map((item, i) => <li key={i}>{parseInline(item)}</li>)}
+            {listItems.map((item, i) => <li key={i}>{parseInline(item, userRoles)}</li>)}
           </ol>
         );
       } else if (listType === 'pros-cons') {
@@ -310,7 +454,7 @@ export function parseLvZJ(text: string): React.ReactNode {
           <ul key={keyCounter++} className="my-2 space-y-1">
             {listItems.map((item, i) => (
               <li key={i} className={item.startsWith('+') ? 'text-green-600' : item.startsWith('-') ? 'text-red-500' : ''}>
-                {parseInline(item)}
+                {parseInline(item, userRoles)}
               </li>
             ))}
           </ul>
@@ -318,7 +462,7 @@ export function parseLvZJ(text: string): React.ReactNode {
       } else {
         processedLines.push(
           <ul key={keyCounter++} className="list-disc list-inside my-2 space-y-1">
-            {listItems.map((item, i) => <li key={i}>{parseInline(item)}</li>)}
+            {listItems.map((item, i) => <li key={i}>{parseInline(item, userRoles)}</li>)}
           </ul>
         );
       }
@@ -363,13 +507,13 @@ export function parseLvZJ(text: string): React.ReactNode {
     // Check for heading
     if (line.match(/\(nadpis\)/i)) {
       line = line.replace(/\(nadpis\)/gi, '');
-      processedLines.push(<h2 key={keyCounter++} className="text-2xl font-display font-bold my-4">{parseInline(line)}</h2>);
+      processedLines.push(<h2 key={keyCounter++} className="text-2xl font-display font-bold my-4">{parseInline(line, userRoles)}</h2>);
       continue;
     }
 
     if (line.match(/\(malý nadpis\)/i)) {
       line = line.replace(/\(malý nadpis\)/gi, '');
-      processedLines.push(<h3 key={keyCounter++} className="text-xl font-display font-semibold my-3">{parseInline(line)}</h3>);
+      processedLines.push(<h3 key={keyCounter++} className="text-xl font-display font-semibold my-3">{parseInline(line, userRoles)}</h3>);
       continue;
     }
 
@@ -395,7 +539,7 @@ export function parseLvZJ(text: string): React.ReactNode {
     }
 
     // Process inline elements
-    const parsed = parseInline(line);
+    const parsed = parseInline(line, userRoles);
     if (alignClass) {
       processedLines.push(<p key={keyCounter++} className={alignClass}>{parsed}</p>);
     } else if (line.trim()) {
@@ -411,7 +555,7 @@ export function parseLvZJ(text: string): React.ReactNode {
 }
 
 // Parse inline elements
-function parseInline(text: string): React.ReactNode {
+function parseInline(text: string, userRoles: string[] = []): React.ReactNode {
   if (!text) return null;
 
   const parts: React.ReactNode[] = [];
@@ -423,7 +567,7 @@ function parseInline(text: string): React.ReactNode {
     // Check for special placeholders
     const spoilerMatch = remaining.match(/^\{\{SPOILER:([\s\S]*?)\}\}/);
     if (spoilerMatch) {
-      parts.push(<Spoiler key={keyCounter++}>{parseInline(spoilerMatch[1])}</Spoiler>);
+      parts.push(<Spoiler key={keyCounter++}>{parseInline(spoilerMatch[1], userRoles)}</Spoiler>);
       remaining = remaining.substring(spoilerMatch[0].length);
       continue;
     }
@@ -431,15 +575,32 @@ function parseInline(text: string): React.ReactNode {
     const boxMatch = remaining.match(/^\{\{BOX:(\w+):([\s\S]*?)\}\}/);
     if (boxMatch) {
       const align = boxMatch[1] === 'vpravo' ? 'right' : boxMatch[1] === 'vlevo' ? 'left' : undefined;
-      parts.push(<Box key={keyCounter++} align={align}>{parseInline(boxMatch[2])}</Box>);
+      parts.push(<Box key={keyCounter++} align={align}>{parseInline(boxMatch[2], userRoles)}</Box>);
       remaining = remaining.substring(boxMatch[0].length);
       continue;
     }
 
     const quoteMatch = remaining.match(/^\{\{QUOTE:(.*?):([\s\S]*?)\}\}/);
     if (quoteMatch) {
-      parts.push(<Quote key={keyCounter++} author={quoteMatch[1] || undefined}>{parseInline(quoteMatch[2])}</Quote>);
+      parts.push(<Quote key={keyCounter++} author={quoteMatch[1] || undefined}>{parseInline(quoteMatch[2], userRoles)}</Quote>);
       remaining = remaining.substring(quoteMatch[0].length);
+      continue;
+    }
+
+    // Playlist placeholder
+    const playlistMatch = remaining.match(/^\{\{PLAYLIST:([\s\S]*?)\}\}/);
+    if (playlistMatch) {
+      const urls = playlistMatch[1].split('|||').filter(Boolean);
+      parts.push(<PlaylistEmbed key={keyCounter++} items={urls} />);
+      remaining = remaining.substring(playlistMatch[0].length);
+      continue;
+    }
+
+    // Restricted content placeholder
+    const restrictedMatch = remaining.match(/^\{\{RESTRICTED:(\w+)\}\}/);
+    if (restrictedMatch) {
+      parts.push(<RestrictedContent key={keyCounter++} commandName={restrictedMatch[1]} />);
+      remaining = remaining.substring(restrictedMatch[0].length);
       continue;
     }
 
@@ -448,6 +609,18 @@ function parseInline(text: string): React.ReactNode {
     if (commandMatch) {
       const command = commandMatch[1];
       const lowerCommand = command.toLowerCase();
+
+      // Melodie (Hudebník only)
+      const melodieMatch = lowerCommand.match(/melodie\s+(https?:\/\/\S+)/);
+      if (melodieMatch) {
+        if (hasPermission(['hudebnik'], userRoles)) {
+          parts.push(<MelodieEmbed key={keyCounter++} url={melodieMatch[1]} />);
+        } else {
+          parts.push(<RestrictedContent key={keyCounter++} commandName="melodie" />);
+        }
+        remaining = remaining.substring(commandMatch[0].length);
+        continue;
+      }
 
       // Countdown
       const countdownToMatch = lowerCommand.match(/odpočet(?:\s+slovně)?\s+do\s+(.+)/);
@@ -503,7 +676,7 @@ function parseInline(text: string): React.ReactNode {
         if (endMatch) {
           parts.push(
             <a key={keyCounter++} href={linkMatch[1]} className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">
-              {parseInline(endMatch[1])}
+              {parseInline(endMatch[1], userRoles)}
             </a>
           );
           remaining = remaining.substring(commandMatch[0].length + endMatch[0].length);
@@ -596,7 +769,7 @@ function parseInline(text: string): React.ReactNode {
   return <>{parts}</>;
 }
 
-// Component for rendering LvZJ content
-export function LvZJContent({ content, className }: { content: string; className?: string }) {
-  return <div className={cn("lvzj-content", className)}>{parseLvZJ(content)}</div>;
+// Component for rendering LvZJ content with role support
+export function LvZJContent({ content, className, userRoles = [] }: { content: string; className?: string; userRoles?: string[] }) {
+  return <div className={cn("lvzj-content", className)}>{parseLvZJ(content, userRoles)}</div>;
 }
