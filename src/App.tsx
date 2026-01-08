@@ -9,7 +9,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Clankovnice from "./pages/Clankovnice";
 import Tipovacky from "./pages/Tipovacky";
-import Fotosoutez from "./pages/Fotosoutez";
+
 import Obchudek from "./pages/Obchudek";
 import Admin from "./pages/Admin";
 import Posta from "./pages/Posta";
@@ -32,7 +32,7 @@ const App = () => (
             <Route path="/" element={<Layout><Index /></Layout>} />
             <Route path="/clankovnice" element={<Layout><Clankovnice /></Layout>} />
             <Route path="/tipovacky" element={<Layout><Tipovacky /></Layout>} />
-            <Route path="/fotosoutez" element={<Layout><Fotosoutez /></Layout>} />
+            
             <Route path="/obchudek" element={<Layout><Obchudek /></Layout>} />
             <Route path="/admin" element={<Layout><Admin /></Layout>} />
             <Route path="/pravidla-ochrana-ou" element={<Layout><PravidlaOchranaOU /></Layout>} />
