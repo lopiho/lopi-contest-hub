@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Star, FileText, ChevronLeft, ChevronRight, Coins, Eye } from 'lucide-react';
 import { calculateRatingStats } from '@/lib/points';
 import RatingDisplay from './RatingDisplay';
+import UserBadge from './UserBadge';
 
 interface PublishedArticle {
   id: string;
@@ -16,6 +17,7 @@ interface PublishedArticle {
   created_at: string;
   author_id: string;
   author_username: string;
+  author_roles: string[];
   ratings: number[];
 }
 
@@ -51,7 +53,17 @@ export default function PublishedArticlesCarousel() {
         .select('id, username')
         .in('id', authorIds);
 
+      const { data: rolesData } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .in('user_id', authorIds);
+
       const profileMap = new Map(profiles?.map(p => [p.id, p.username]) || []);
+      const rolesMap = new Map<string, string[]>();
+      rolesData?.forEach(r => {
+        if (!rolesMap.has(r.user_id)) rolesMap.set(r.user_id, []);
+        rolesMap.get(r.user_id)!.push(r.role);
+      });
 
       const mapped = articlesData.map(a => ({
         id: a.id,
@@ -61,6 +73,7 @@ export default function PublishedArticlesCarousel() {
         created_at: a.created_at,
         author_id: a.author_id,
         author_username: profileMap.get(a.author_id) || 'Neznámý',
+        author_roles: rolesMap.get(a.author_id) || [],
         ratings: (a.article_ratings || []).map((r: { rating: number }) => r.rating),
       }));
 
@@ -154,7 +167,9 @@ export default function PublishedArticlesCarousel() {
                     </Badge>
                   </div>
                   <CardDescription className="flex items-center justify-between">
-                    <span>od @{article.author_username}</span>
+                    <span className="flex items-center gap-1">
+                      od <UserBadge username={article.author_username} roles={article.author_roles} showAt={false} className="text-muted-foreground" />
+                    </span>
                     {stats.averageRating !== null && (
                       <span className="flex items-center gap-1">
                         <Star className="w-3 h-3 fill-primary text-primary" />
@@ -179,7 +194,9 @@ export default function PublishedArticlesCarousel() {
                       <DialogHeader>
                         <DialogTitle className="font-display text-xl">{article.title}</DialogTitle>
                         <div className="flex items-center justify-between text-sm text-muted-foreground">
-                          <span>od @{article.author_username}</span>
+                          <span className="flex items-center gap-1">
+                            od <UserBadge username={article.author_username} roles={article.author_roles} showAt={false} />
+                          </span>
                           <span>{new Date(article.created_at).toLocaleDateString('cs-CZ')}</span>
                         </div>
                       </DialogHeader>
