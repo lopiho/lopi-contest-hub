@@ -12,6 +12,7 @@ import Tipovacky from "./pages/Tipovacky";
 import Redakce from "./pages/Redakce";
 
 import Obchudek from "./pages/Obchudek";
+import Inventar from "./pages/Inventar";
 import Admin from "./pages/Admin";
 import Posta from "./pages/Posta";
 import Profile from "./pages/Profile";
@@ -35,6 +36,7 @@ const App = () => (
             <Route path="/tipovacky" element={<Layout><Tipovacky /></Layout>} />
             
             <Route path="/obchudek" element={<Layout><Obchudek /></Layout>} />
+            <Route path="/inventar" element={<Layout><Inventar /></Layout>} />
             <Route path="/admin" element={<Layout><Admin /></Layout>} />
             <Route path="/redakce" element={<Layout><Redakce /></Layout>} />
             <Route path="/pravidla-ochrana-ou" element={<Layout><PravidlaOchranaOU /></Layout>} />

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { ShoppingBag, Coins, Package, ShoppingCart, Loader2, AlertCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface ShopItem {
   id: string;
@@ -155,9 +156,17 @@ export default function Obchudek() {
           </div>
 
           {user && (
-            <div className="flex items-center gap-2 bg-success/10 text-success px-4 py-2 rounded-full font-semibold">
-              <Coins className="w-5 h-5" />
-              <span>{userPoints} bodů</span>
+            <div className="flex items-center gap-3">
+              <Link to="/inventar">
+                <Button variant="outline" className="gap-2">
+                  <Package className="w-4 h-4" />
+                  Můj inventář
+                </Button>
+              </Link>
+              <div className="flex items-center gap-2 bg-success/10 text-success px-4 py-2 rounded-full font-semibold">
+                <Coins className="w-5 h-5" />
+                <span>{userPoints} bodů</span>
+              </div>
             </div>
           )}
         </div>
