@@ -14,7 +14,7 @@ interface UserBadgeProps {
 export const getRoleDisplayName = (role: string): string => {
   switch (role) {
     case 'organizer':
-      return 'Organizátor';
+      return 'Administrátor';
     case 'helper':
       return 'Pomocníček';
     case 'veverka':
