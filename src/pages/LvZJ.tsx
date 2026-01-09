@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { LvZJContent } from '@/lib/lvzj-parser';
-import { BookOpen, Palette, Link as LinkIcon, List, Type, Box, Quote, Sparkles, Eye, Edit2, Clock, AlertTriangle } from 'lucide-react';
+import { BookOpen, Palette, Link as LinkIcon, List, Type, Box, Quote, Sparkles, Eye, Edit2, Clock, AlertTriangle, Music, Lock } from 'lucide-react';
 
 const examples = [
   {
@@ -97,6 +97,22 @@ const examples = [
     items: [
       { code: "(závorka)", desc: "Zobrazí závorku bez zpracování" },
       { code: "(prostě)nezpracovaný text(azj)", desc: "Text bez LvZJ zpracování" },
+    ]
+  },
+  {
+    category: "Hudební příkazy",
+    icon: <Music className="w-5 h-5" />,
+    items: [
+      { code: "(melodie https://youtube.com/watch?v=xxx)", desc: "Vložení hudby (YouTube/Spotify)" },
+      { code: "(playlist)\n- https://youtube.com/watch?v=1\n- https://youtube.com/watch?v=2\n(konec playlistu)", desc: "Interaktivní playlist" },
+    ]
+  },
+  {
+    category: "Omezené příkazy",
+    icon: <Lock className="w-5 h-5" />,
+    items: [
+      { code: "(melodie ...)", desc: "Pouze pro Hudebníky a Administrátory" },
+      { code: "(playlist)...(konec playlistu)", desc: "Pouze pro Hudebníky a Administrátory" },
     ]
   },
 ];
@@ -236,6 +252,15 @@ export default function LvZJ() {
               <h3 className="font-semibold mb-2">Escape závorek</h3>
               <p className="text-sm text-muted-foreground">
                 Pokud potřebuješ napsat závorku bez zpracování, použij <code className="bg-background px-1 rounded">(závorka)</code> nebo obal text mezi <code className="bg-background px-1 rounded">(prostě)</code> a <code className="bg-background px-1 rounded">(azj)</code>.
+              </p>
+            </div>
+            <div className="p-4 bg-purple-500/10 rounded-lg border border-purple-500/20">
+              <h3 className="font-semibold mb-2 flex items-center gap-2">
+                <Music className="w-4 h-4" />
+                Hudební příkazy (omezené)
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Příkazy <code className="bg-background px-1 rounded">(melodie)</code> a <code className="bg-background px-1 rounded">(playlist)</code> jsou dostupné pouze pro uživatele s rolí Hudebník nebo Administrátor. Ostatní uživatelé uvidí místo obsahu upozornění o omezeném obsahu.
               </p>
             </div>
           </CardContent>
