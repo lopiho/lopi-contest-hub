@@ -9,6 +9,7 @@ import { Mail, MailOpen, Loader2, Inbox as InboxIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cs } from 'date-fns/locale';
 import { LvZJContent } from '@/lib/lvzj-parser';
+import UserBadge from './UserBadge';
 
 interface Message {
   id: string;
@@ -16,7 +17,9 @@ interface Message {
   content: string;
   is_read: boolean;
   created_at: string;
+  sender_id?: string;
   sender_username?: string;
+  sender_roles?: string[];
 }
 
 export default function Inbox() {
@@ -39,21 +42,34 @@ export default function Inbox() {
       .eq('recipient_id', user?.id)
       .order('created_at', { ascending: false });
 
-    // Get sender usernames
+    // Get sender usernames and roles
     const senderIds = [...new Set((data || []).map(m => m.sender_id).filter(Boolean))];
     
     let profileMap = new Map<string, string>();
+    let rolesMap = new Map<string, string[]>();
+    
     if (senderIds.length > 0) {
       const { data: profiles } = await supabase
         .from('profiles')
         .select('id, username')
         .in('id', senderIds);
       profileMap = new Map(profiles?.map(p => [p.id, p.username]) || []);
+      
+      const { data: rolesData } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .in('user_id', senderIds);
+      
+      rolesData?.forEach(r => {
+        if (!rolesMap.has(r.user_id)) rolesMap.set(r.user_id, []);
+        rolesMap.get(r.user_id)!.push(r.role);
+      });
     }
 
     const mappedMessages = (data || []).map(m => ({
       ...m,
-      sender_username: m.sender_id ? profileMap.get(m.sender_id) || 'Systém' : 'Systém'
+      sender_username: m.sender_id ? profileMap.get(m.sender_id) || 'Systém' : 'Systém',
+      sender_roles: m.sender_id ? rolesMap.get(m.sender_id) || [] : []
     }));
 
     setMessages(mappedMessages);
@@ -129,7 +145,9 @@ export default function Inbox() {
                       </span>
                     </div>
                     <p className="text-sm text-muted-foreground truncate mt-1">
-                      Od: {message.sender_username}
+                      Od: {message.sender_id ? (
+                        <UserBadge username={message.sender_username || 'Systém'} roles={message.sender_roles || []} showAt={false} />
+                      ) : 'Systém'}
                     </p>
                   </div>
                 </div>
@@ -148,7 +166,11 @@ export default function Inbox() {
           {selectedMessage && (
             <div className="space-y-4">
               <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <span>Od: {selectedMessage.sender_username}</span>
+                <span className="flex items-center gap-1">
+                  Od: {selectedMessage.sender_id ? (
+                    <UserBadge username={selectedMessage.sender_username || 'Systém'} roles={selectedMessage.sender_roles || []} showAt={false} />
+                  ) : 'Systém'}
+                </span>
                 <span>{format(new Date(selectedMessage.created_at), 'd. M. yyyy HH:mm', { locale: cs })}</span>
               </div>
               <div className="p-4 bg-muted rounded-lg">
