@@ -13,7 +13,8 @@ import {
   Coins,
   Shield,
   Mail,
-  Squirrel
+  Squirrel,
+  Package
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,6 +26,7 @@ const navItems = [
   { href: '/clankovnice', label: 'Článkovnice', icon: FileText },
   { href: '/tipovacky', label: 'Tipovačky', icon: HelpCircle },
   { href: '/obchudek', label: 'Obchůdek', icon: ShoppingBag },
+  { href: '/inventar', label: 'Inventář', icon: Package },
 ];
 
 export default function Navbar() {

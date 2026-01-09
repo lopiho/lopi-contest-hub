@@ -1,28 +1,24 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { toast } from 'sonner';
-import { Package, Sparkles, Gift, ShoppingBag, Loader2, Box, Zap } from 'lucide-react';
+import { Package, ShoppingBag, Loader2, Box, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { cs } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
 
 interface InventoryItem {
   id: string;
-  user_id: string;
   item_id: string;
   quantity: number;
   acquired_at: string;
-  source: string;
+  status: string;
   item_name: string;
   item_description: string | null;
   item_image_url: string | null;
-  item_type: string;
-  is_consumable: boolean;
 }
 
 export default function Inventar() {
@@ -30,7 +26,6 @@ export default function Inventar() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
-  const [using, setUsing] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -43,12 +38,13 @@ export default function Inventar() {
   const fetchInventory = async () => {
     if (!user) return;
 
-    const { data: inventoryData, error } = await supabase
-      .from('inventory_items')
-      .select('*')
+    // Fetch delivered purchases as inventory items
+    const { data: purchasesData, error } = await supabase
+      .from('purchases')
+      .select('id, item_id, quantity, created_at, status')
       .eq('user_id', user.id)
-      .gt('quantity', 0)
-      .order('acquired_at', { ascending: false });
+      .eq('status', 'delivered')
+      .order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error fetching inventory:', error);
@@ -57,98 +53,34 @@ export default function Inventar() {
     }
 
     // Fetch item details
-    const itemIds = [...new Set((inventoryData || []).map(i => i.item_id))];
+    const itemIds = [...new Set((purchasesData || []).map(p => p.item_id))];
     
     let itemsMap = new Map<string, any>();
     if (itemIds.length > 0) {
       const { data: shopItems } = await supabase
         .from('shop_items')
-        .select('id, name, description, image_url, item_type, is_consumable')
+        .select('id, name, description, image_url')
         .in('id', itemIds);
       
       itemsMap = new Map(shopItems?.map(i => [i.id, i]) || []);
     }
 
-    const enrichedItems = (inventoryData || []).map(inv => {
-      const shopItem = itemsMap.get(inv.item_id);
+    const enrichedItems: InventoryItem[] = (purchasesData || []).map(purchase => {
+      const shopItem = itemsMap.get(purchase.item_id);
       return {
-        ...inv,
+        id: purchase.id,
+        item_id: purchase.item_id,
+        quantity: purchase.quantity,
+        acquired_at: purchase.created_at,
+        status: purchase.status,
         item_name: shopItem?.name || 'Neznámý předmět',
         item_description: shopItem?.description || null,
-        item_image_url: shopItem?.image_url || null,
-        item_type: shopItem?.item_type || 'collectible',
-        is_consumable: shopItem?.is_consumable || false
+        item_image_url: shopItem?.image_url || null
       };
     });
 
     setItems(enrichedItems);
     setLoading(false);
-  };
-
-  const handleUseItem = async () => {
-    if (!selectedItem || !user) return;
-    
-    setUsing(true);
-
-    const newQuantity = selectedItem.quantity - 1;
-
-    if (newQuantity <= 0) {
-      // Delete the inventory item
-      const { error } = await supabase
-        .from('inventory_items')
-        .delete()
-        .eq('id', selectedItem.id);
-
-      if (error) {
-        toast.error('Chyba při používání předmětu');
-        setUsing(false);
-        return;
-      }
-    } else {
-      // Update quantity
-      const { error } = await supabase
-        .from('inventory_items')
-        .update({ quantity: newQuantity })
-        .eq('id', selectedItem.id);
-
-      if (error) {
-        toast.error('Chyba při používání předmětu');
-        setUsing(false);
-        return;
-      }
-    }
-
-    toast.success(`Použil jsi: ${selectedItem.item_name}!`);
-    setSelectedItem(null);
-    setUsing(false);
-    fetchInventory();
-  };
-
-  const getSourceLabel = (source: string) => {
-    switch (source) {
-      case 'purchase': return 'Nákup';
-      case 'gift': return 'Dar';
-      case 'reward': return 'Odměna';
-      default: return source;
-    }
-  };
-
-  const getSourceIcon = (source: string) => {
-    switch (source) {
-      case 'purchase': return ShoppingBag;
-      case 'gift': return Gift;
-      case 'reward': return Sparkles;
-      default: return Package;
-    }
-  };
-
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'collectible': return 'Sběratelský';
-      case 'consumable': return 'Spotřební';
-      case 'badge': return 'Odznak';
-      default: return type;
-    }
   };
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
@@ -204,7 +136,7 @@ export default function Inventar() {
             <Box className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
             <h2 className="text-xl font-semibold mb-2">Tvůj inventář je prázdný</h2>
             <p className="text-muted-foreground mb-6">
-              Nakupuj v obchůdku a tvoje předměty se objeví zde!
+              Nakupuj v obchůdku a po doručení se předměty objeví zde!
             </p>
             <Link to="/obchudek">
               <Button>
@@ -219,58 +151,53 @@ export default function Inventar() {
       {/* Inventory Grid */}
       {items.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {items.map((item) => {
-            const SourceIcon = getSourceIcon(item.source);
-            return (
-              <Card 
-                key={item.id} 
-                className="group hover:shadow-lg transition-shadow cursor-pointer"
-                onClick={() => setSelectedItem(item)}
-              >
-                <CardContent className="p-4">
-                  {/* Item Image */}
-                  <div className="aspect-square bg-muted rounded-lg mb-3 overflow-hidden relative">
-                    {item.item_image_url ? (
-                      <img 
-                        src={item.item_image_url} 
-                        alt={item.item_name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Package className="w-12 h-12 text-muted-foreground" />
-                      </div>
-                    )}
-                    
-                    {/* Quantity Badge */}
-                    {item.quantity > 1 && (
-                      <Badge className="absolute top-2 right-2 bg-primary">
-                        ×{item.quantity}
-                      </Badge>
-                    )}
-
-                    {/* Consumable indicator */}
-                    {item.is_consumable && (
-                      <Badge className="absolute top-2 left-2 bg-warning text-warning-foreground">
-                        <Zap className="w-3 h-3 mr-1" />
-                        Spotřební
-                      </Badge>
-                    )}
-                  </div>
-
-                  {/* Item Info */}
-                  <h3 className="font-semibold truncate">{item.item_name}</h3>
+          {items.map((item) => (
+            <Card 
+              key={item.id} 
+              className="group hover:shadow-lg transition-shadow cursor-pointer"
+              onClick={() => setSelectedItem(item)}
+            >
+              <CardContent className="p-4">
+                {/* Item Image */}
+                <div className="aspect-square bg-muted rounded-lg mb-3 overflow-hidden relative">
+                  {item.item_image_url ? (
+                    <img 
+                      src={item.item_image_url} 
+                      alt={item.item_name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Package className="w-12 h-12 text-muted-foreground" />
+                    </div>
+                  )}
                   
-                  <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-                    <SourceIcon className="w-3 h-3" />
-                    <span>{getSourceLabel(item.source)}</span>
-                    <span>•</span>
-                    <span>{format(new Date(item.acquired_at), 'd. M. yyyy', { locale: cs })}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                  {/* Quantity Badge */}
+                  {item.quantity > 1 && (
+                    <Badge className="absolute top-2 right-2 bg-primary">
+                      ×{item.quantity}
+                    </Badge>
+                  )}
+
+                  {/* Delivered indicator */}
+                  <Badge className="absolute top-2 left-2 bg-success text-success-foreground">
+                    <CheckCircle className="w-3 h-3 mr-1" />
+                    Doručeno
+                  </Badge>
+                </div>
+
+                {/* Item Info */}
+                <h3 className="font-semibold truncate">{item.item_name}</h3>
+                
+                <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                  <ShoppingBag className="w-3 h-3" />
+                  <span>Nákup</span>
+                  <span>•</span>
+                  <span>{format(new Date(item.acquired_at), 'd. M. yyyy', { locale: cs })}</span>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
 
@@ -306,14 +233,12 @@ export default function Inventar() {
 
                 {/* Details */}
                 <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline">
-                    {getTypeLabel(selectedItem.item_type)}
+                  <Badge variant="outline" className="gap-1">
+                    <CheckCircle className="w-3 h-3" />
+                    Doručeno
                   </Badge>
                   <Badge variant="outline">
                     Počet: {selectedItem.quantity}
-                  </Badge>
-                  <Badge variant="outline">
-                    {getSourceLabel(selectedItem.source)}
                   </Badge>
                 </div>
 
@@ -323,20 +248,6 @@ export default function Inventar() {
               </div>
 
               <DialogFooter>
-                {selectedItem.is_consumable && (
-                  <Button 
-                    onClick={handleUseItem} 
-                    disabled={using}
-                    className="gap-2"
-                  >
-                    {using ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Zap className="w-4 h-4" />
-                    )}
-                    Použít
-                  </Button>
-                )}
                 <Button variant="outline" onClick={() => setSelectedItem(null)}>
                   Zavřít
                 </Button>
