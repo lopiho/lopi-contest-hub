@@ -171,6 +171,14 @@ export default function Admin() {
   const [broadcastContent, setBroadcastContent] = useState('');
   const [sendingBroadcast, setSendingBroadcast] = useState(false);
   const [siteStatsOpen, setSiteStatsOpen] = useState(false);
+  
+  // Gift item to user
+  const [giftItemOpen, setGiftItemOpen] = useState(false);
+  const [giftTargetUser, setGiftTargetUser] = useState<UserProfile | null>(null);
+  const [giftItem, setGiftItem] = useState<ShopItem | null>(null);
+  const [giftQuantity, setGiftQuantity] = useState('1');
+  const [giftReason, setGiftReason] = useState('');
+  const [giftingItem, setGiftingItem] = useState(false);
   useEffect(() => {
     if (user) {
       checkRole();
@@ -600,6 +608,53 @@ export default function Admin() {
       toast.success('Objednávka aktualizována');
       fetchShopData();
     }
+  };
+
+  // Gift item to user (adds to inventory as gift)
+  const handleGiftItem = async () => {
+    if (!giftTargetUser || !giftItem) {
+      toast.error('Vyber uživatele a předmět');
+      return;
+    }
+    const quantity = parseInt(giftQuantity) || 1;
+    if (quantity < 1) {
+      toast.error('Množství musí být alespoň 1');
+      return;
+    }
+    
+    setGiftingItem(true);
+    
+    // Create a "gift" purchase record with status 'delivered'
+    const { error } = await supabase.from('purchases').insert({
+      user_id: giftTargetUser.id,
+      item_id: giftItem.id,
+      quantity: quantity,
+      total_price: 0, // Gift is free
+      status: 'delivered'
+    });
+    
+    if (error) {
+      toast.error('Chyba při darování předmětu');
+      setGiftingItem(false);
+      return;
+    }
+    
+    // Send notification message
+    await supabase.from('messages').insert({
+      sender_id: user?.id,
+      recipient_id: giftTargetUser.id,
+      subject: `🎁 Obdržel/a jsi dar: ${giftItem.name}`,
+      content: giftReason.trim() || `Byl ti darován předmět "${giftItem.name}" (${quantity}×). Najdeš ho ve svém inventáři!`
+    });
+    
+    toast.success(`Předmět "${giftItem.name}" darován uživateli @${giftTargetUser.username}`);
+    setGiftItemOpen(false);
+    setGiftTargetUser(null);
+    setGiftItem(null);
+    setGiftQuantity('1');
+    setGiftReason('');
+    setGiftingItem(false);
+    fetchShopData();
   };
 
   // Article handlers
@@ -1312,12 +1367,17 @@ lopi`;
 
           {/* Obchůdek Tab */}
           <TabsContent value="obchudek" className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center flex-wrap gap-2">
               <h2 className="text-xl font-display font-bold">Správa obchůdku</h2>
-              <Dialog open={newItemDialogOpen} onOpenChange={setNewItemDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="hero" className="gap-2"><Plus className="w-4 h-4" />Nová položka</Button>
-                </DialogTrigger>
+              <div className="flex gap-2">
+                <Button variant="outline" className="gap-2" onClick={() => setGiftItemOpen(true)}>
+                  <Award className="w-4 h-4" />
+                  Darovat předmět
+                </Button>
+                <Dialog open={newItemDialogOpen} onOpenChange={setNewItemDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="hero" className="gap-2"><Plus className="w-4 h-4" />Nová položka</Button>
+                  </DialogTrigger>
                 <DialogContent>
                   <DialogHeader><DialogTitle>Vytvořit položku</DialogTitle></DialogHeader>
                   <div className="space-y-4 py-4">
@@ -1361,8 +1421,8 @@ lopi`;
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
+              </div>
             </div>
-
             <Tabs defaultValue="items">
               <TabsList>
                 <TabsTrigger value="items">Položky ({shopItems.length})</TabsTrigger>
@@ -2043,6 +2103,101 @@ lopi`;
               <Button variant="destructive" onClick={handleBlockUser} disabled={processing}>
                 {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />}
                 <span className="ml-2">Zablokovat</span>
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Gift Item Dialog */}
+        <Dialog open={giftItemOpen} onOpenChange={(open) => {
+          setGiftItemOpen(open);
+          if (!open) {
+            setGiftTargetUser(null);
+            setGiftItem(null);
+            setGiftQuantity('1');
+            setGiftReason('');
+          }
+        }}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Award className="w-5 h-5 text-primary" />
+                Darovat předmět
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Vybrat uživatele</Label>
+                <Select 
+                  value={giftTargetUser?.id || ''} 
+                  onValueChange={(id) => setGiftTargetUser(users.find(u => u.id === id) || null)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Vyber příjemce..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {users.map(u => (
+                      <SelectItem key={u.id} value={u.id}>@{u.username}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Vybrat předmět</Label>
+                <Select 
+                  value={giftItem?.id || ''} 
+                  onValueChange={(id) => setGiftItem(shopItems.find(i => i.id === id) || null)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Vyber předmět..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {shopItems.filter(i => i.is_active).map(item => (
+                      <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Množství</Label>
+                <Input 
+                  type="number" 
+                  min="1" 
+                  value={giftQuantity}
+                  onChange={(e) => setGiftQuantity(e.target.value)}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Zpráva pro příjemce (volitelné)</Label>
+                <Textarea 
+                  value={giftReason}
+                  onChange={(e) => setGiftReason(e.target.value)}
+                  placeholder="Např. Dar za aktivitu v soutěži..."
+                  rows={3}
+                />
+              </div>
+              
+              {giftTargetUser && giftItem && (
+                <div className="p-3 bg-success/10 rounded-lg border border-success/20">
+                  <p className="text-sm">
+                    <strong>@{giftTargetUser.username}</strong> obdrží{' '}
+                    <strong>{giftQuantity}× {giftItem.name}</strong>
+                  </p>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setGiftItemOpen(false)}>Zrušit</Button>
+              <Button 
+                variant="hero" 
+                onClick={handleGiftItem} 
+                disabled={giftingItem || !giftTargetUser || !giftItem}
+              >
+                {giftingItem ? <Loader2 className="w-4 h-4 animate-spin" /> : <Award className="w-4 h-4" />}
+                <span className="ml-2">Darovat</span>
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -43,7 +43,7 @@ const App = () => (
             <Route path="/lvzj" element={<Layout><LvZJ /></Layout>} />
             <Route path="/posta" element={<Layout><Posta /></Layout>} />
             <Route path="/u/:username" element={<Layout><Profile /></Layout>} />
-            <Route path="*" element={<NotFound />} />
+            <Route path="*" element={<Layout><NotFound /></Layout>} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
