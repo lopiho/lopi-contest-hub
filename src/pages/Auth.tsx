@@ -235,7 +235,7 @@ export default function Auth() {
               <Input
                 id="reset-email"
                 type="email"
-                placeholder="tvuj@email.cz"
+                placeholder="prezdivka@ls.ls"
                 value={resetEmail}
                 onChange={(e) => setResetEmail(e.target.value)}
                 required
@@ -288,7 +288,7 @@ export default function Auth() {
                   <Input
                     id="login-email"
                     type="email"
-                    placeholder="tvuj@email.cz"
+                    placeholder="prezdivka@ls.ls - nezadávej svůj opravdový email"
                     value={loginForm.email}
                     onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
                     className="h-12"
@@ -304,7 +304,7 @@ export default function Auth() {
                   <Input
                     id="login-password"
                     type="password"
-                    placeholder="••••••••"
+                    placeholder="Zadej jiné než to, které máš na Alíkovi - Nelze změnit"
                     value={loginForm.password}
                     onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
                     className="h-12"
