@@ -179,6 +179,12 @@ export default function Admin() {
   const [giftQuantity, setGiftQuantity] = useState('1');
   const [giftReason, setGiftReason] = useState('');
   const [giftingItem, setGiftingItem] = useState(false);
+  
+  // Create user (admin)
+  const [createUserOpen, setCreateUserOpen] = useState(false);
+  const [newUsername, setNewUsername] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('');
+  const [creatingUser, setCreatingUser] = useState(false);
   useEffect(() => {
     if (user) {
       checkRole();
@@ -444,6 +450,70 @@ export default function Admin() {
   const handleRemoveRestriction = (id: string) => {
     setLvzjRestrictions(prev => prev.filter(r => r.id !== id));
     toast.success('Omezení odstraněno');
+  };
+
+  // Create user (admin)
+  const handleCreateUser = async () => {
+    if (!newUsername.trim() || !newUserPassword.trim()) {
+      toast.error('Vyplň přezdívku a heslo');
+      return;
+    }
+
+    if (newUsername.length < 2 || newUsername.length > 30) {
+      toast.error('Přezdívka musí mít 2-30 znaků');
+      return;
+    }
+
+    if (newUserPassword.length < 6) {
+      toast.error('Heslo musí mít alespoň 6 znaků');
+      return;
+    }
+
+    setCreatingUser(true);
+
+    try {
+      const session = await supabase.auth.getSession();
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-create-user`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.data.session?.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            username: newUsername.trim(),
+            password: newUserPassword,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Nepodařilo se vytvořit uživatele');
+      }
+
+      toast.success(`Uživatel @${newUsername} vytvořen! Email: ${data.email}`);
+      setCreateUserOpen(false);
+      setNewUsername('');
+      setNewUserPassword('');
+      fetchUsers();
+    } catch (error: any) {
+      console.error('Error creating user:', error);
+      toast.error(error.message || 'Nepodařilo se vytvořit uživatele');
+    } finally {
+      setCreatingUser(false);
+    }
+  };
+
+  const generateRandomPassword = () => {
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let password = '';
+    for (let i = 0; i < 10; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setNewUserPassword(password);
   };
   const handleApproveDeletion = async () => {
     if (!requestToProcess) return;
@@ -1513,8 +1583,62 @@ lopi`;
 
           {/* Users Tab */}
           <TabsContent value="users" className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center flex-wrap gap-2">
               <h2 className="text-xl font-display font-bold">Správa uživatelů a rolí</h2>
+              <Dialog open={createUserOpen} onOpenChange={setCreateUserOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="hero" className="gap-2">
+                    <UserPlus className="w-4 h-4" />
+                    Přidat uživatele
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Vytvořit nového uživatele</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label>Alíkovská přezdívka</Label>
+                      <Input 
+                        placeholder="Např. Ferda_Mravenec" 
+                        value={newUsername}
+                        onChange={e => setNewUsername(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Email pro přihlášení bude: {newUsername.toLowerCase().replace(/[^a-z0-9]/g, '') || 'prezdivka'}@ls.ls
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Heslo</Label>
+                      <div className="flex gap-2">
+                        <Input 
+                          type="text"
+                          placeholder="Heslo pro první přihlášení" 
+                          value={newUserPassword}
+                          onChange={e => setNewUserPassword(e.target.value)}
+                        />
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={generateRandomPassword}
+                        >
+                          Generovat
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Uživatel bude při prvním přihlášení vyzván ke změně hesla.
+                      </p>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="ghost" onClick={() => setCreateUserOpen(false)}>Zrušit</Button>
+                    <Button variant="hero" onClick={handleCreateUser} disabled={creatingUser}>
+                      {creatingUser ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+                      <span className="ml-2">Vytvořit</span>
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
