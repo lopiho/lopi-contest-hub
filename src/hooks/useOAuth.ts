@@ -1,0 +1,50 @@
+import { useCallback } from 'react';
+import { 
+  buildAuthorizationUrl, 
+  storePKCEValues,
+  retrievePKCEValues 
+} from '@/lib/oauth';
+
+// OAuth configuration - these should match your OAuth provider
+const OAUTH_CONFIG = {
+  // These values should be configured based on your OAuth provider
+  // The actual URLs are stored as secrets in the backend
+  authorizationUrl: import.meta.env.VITE_OAUTH_AUTHORIZATION_URL || '',
+  clientId: import.meta.env.VITE_OAUTH_CLIENT_ID || '',
+  scope: 'openid profile', // Adjust based on your provider
+};
+
+export function useOAuth() {
+  const startOAuthFlow = useCallback(async () => {
+    const redirectUri = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/oauth-callback`;
+    
+    if (!OAUTH_CONFIG.authorizationUrl || !OAUTH_CONFIG.clientId) {
+      console.error('OAuth not configured. Set VITE_OAUTH_AUTHORIZATION_URL and VITE_OAUTH_CLIENT_ID');
+      throw new Error('OAuth není nakonfigurováno');
+    }
+
+    const { url, state, codeVerifier } = await buildAuthorizationUrl(
+      OAUTH_CONFIG.authorizationUrl,
+      OAUTH_CONFIG.clientId,
+      redirectUri,
+      OAUTH_CONFIG.scope
+    );
+
+    // Store PKCE values for later verification
+    storePKCEValues(state, codeVerifier);
+
+    // Redirect to OAuth provider
+    window.location.href = url;
+  }, []);
+
+  const handleOAuthCallback = useCallback(() => {
+    const { state, codeVerifier } = retrievePKCEValues();
+    return { state, codeVerifier };
+  }, []);
+
+  return {
+    startOAuthFlow,
+    handleOAuthCallback,
+    isConfigured: Boolean(OAUTH_CONFIG.authorizationUrl && OAUTH_CONFIG.clientId),
+  };
+}
