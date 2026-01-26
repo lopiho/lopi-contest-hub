@@ -1,6 +1,7 @@
-project_id = "wmmwsbrevzfeqzdrcbrc"
+project_id = "koxtalewwlsvtzzitztd"
 
-[
-functions.admin-create-user
-]
+[functions.admin-create-user]
+verify_jwt = false
+
+[functions.oauth-callback]
 verify_jwt = false

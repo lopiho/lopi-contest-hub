@@ -347,7 +347,7 @@ export default function Auth() {
                     onChange={(e) => setSignupForm({ ...signupForm, username: e.target.value })}
                     className="h-12"
                     required
-                  disable/>
+                  disabled/>
                 </div>
 
                 <div className="space-y-2">
@@ -363,7 +363,7 @@ export default function Auth() {
                     onChange={(e) => setSignupForm({ ...signupForm, email: e.target.value })}
                     className="h-12"
                     required
-                  disable/>
+                  disabled/>
                 </div>
 
                 <div className="space-y-2">
