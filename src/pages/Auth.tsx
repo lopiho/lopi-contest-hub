@@ -10,9 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Trophy, Sparkles, Mail, Lock, User, ArrowLeft } from 'lucide-react';
+import { Trophy, Sparkles, Mail, Lock, User, ArrowLeft, ExternalLink } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
+import { useOAuth } from '@/hooks/useOAuth';
 
 const loginSchema = z.object({
   email: z.string().email('Neplatný email'),
@@ -26,7 +27,9 @@ const signupSchema = loginSchema.extend({
 export default function Auth() {
   const navigate = useNavigate();
   const { user, signIn, signUp } = useAuth();
+  const { startOAuthFlow, isConfigured: isOAuthConfigured } = useOAuth();
   const [loading, setLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   
@@ -329,6 +332,26 @@ export default function Auth() {
                     nebo
                   </span>
                 </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  className="w-full gap-2 border-primary/30 hover:border-primary hover:bg-primary/5 transition-all"
+                  disabled={oauthLoading || !isOAuthConfigured}
+                  onClick={async () => {
+                    setOauthLoading(true);
+                    try {
+                      await startOAuthFlow();
+                    } catch (error) {
+                      toast.error('Chyba při přihlašování přes OAuth');
+                      setOauthLoading(false);
+                    }
+                  }}
+                >
+                  <ExternalLink className="w-5 h-5" />
+                  {oauthLoading ? 'Přesměrovávám...' : 'Přihlásit přes Alíka'}
+                </Button>
               </form>
             </TabsContent>
 
