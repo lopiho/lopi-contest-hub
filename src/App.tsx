@@ -8,6 +8,7 @@ import PasswordChangeChecker from "@/components/PasswordChangeChecker";
 import Layout from "@/components/layout/Layout";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import OAuthCallback from "./pages/OAuthCallback";
 import Clankovnice from "./pages/Clankovnice";
 import Tipovacky from "./pages/Tipovacky";
 import Redakce from "./pages/Redakce";
@@ -33,6 +34,8 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/auth" element={<Auth />} />
+              <Route path="/oauth" element={<OAuthCallback />} />
+              <Route path="/auth/callback" element={<OAuthCallback />} />
               <Route path="/" element={<Layout><Index /></Layout>} />
               <Route path="/clankovnice" element={<Layout><Clankovnice /></Layout>} />
               <Route path="/tipovacky" element={<Layout><Tipovacky /></Layout>} />
