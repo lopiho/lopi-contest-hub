@@ -97,8 +97,13 @@ serve(async (req) => {
     const userData = await userInfoResponse.json();
     console.log("User data received:", JSON.stringify(userData, null, 2));
 
-    // Extract username from user data - adjust based on your OAuth provider's response
-    const username = userData.username || userData.login || userData.name || userData.preferred_username;
+    // Extract username from user data - Seznam returns email, extract username from it
+    let username = userData.username || userData.login || userData.name || userData.preferred_username;
+    
+    // If no username but we have email, extract username from email
+    if (!username && userData.email) {
+      username = userData.email.split('@')[0];
+    }
     
     if (!username) {
       console.error("No username found in user data:", userData);
@@ -108,8 +113,8 @@ serve(async (req) => {
       });
     }
 
-    // Create fake email from username
-    const email = `${username}@ls.local`;
+    // Use the actual email from OAuth if available, otherwise create fake one
+    const email = userData.email || `${username}@ls.local`;
     
     // Initialize Supabase admin client
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
