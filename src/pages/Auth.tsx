@@ -350,8 +350,7 @@ export default function Auth() {
                   }}
                 >
                   <ExternalLink className="w-5 h-5" />
-                  {oauthLoading ? 'Přesměrovávám...' : 'Přihlásit přes <img src="https://fv5-5.files.fm/thumb_show.php?i=rzshwrd544&view&v=1&PHPSESSID=4708c9413419eecf14dbe4923c0f0859b85579e0" alt="Trulli">
-'}
+                  {oauthLoading ? 'Přesměrovávám...' : 'Přihlásit přes Alíka'}
                 </Button>
               </form>
             </TabsContent>
