@@ -143,16 +143,12 @@ serve(async (req) => {
       // Create new user with random password (they'll use OAuth)
       const randomPassword = crypto.randomUUID() + crypto.randomUUID();
       
-      // Use email or username as display name
-      const displayName = userData.email || username;
-      
       const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
         email,
         password: randomPassword,
         email_confirm: true,
         user_metadata: {
           username,
-          display_name: displayName,
           oauth_provider: "custom",
           ...userData, // Store additional OAuth data
         },
