@@ -5,13 +5,11 @@ import {
   retrievePKCEValues 
 } from '@/lib/oauth';
 
-// OAuth configuration - these should match your OAuth provider
+// OAuth configuration for Alík (Seznam login)
 const OAUTH_CONFIG = {
-  // These values should be configured based on your OAuth provider
-  // The actual URLs are stored as secrets in the backend
-  authorizationUrl: import.meta.env.VITE_OAUTH_AUTHORIZATION_URL || '',
-  clientId: import.meta.env.VITE_OAUTH_CLIENT_ID || '',
-  scope: 'openid profile', // Adjust based on your provider
+  authorizationUrl: 'https://login.szn.cz/api/v1/oauth/auth',
+  clientId: '5b79f527e84fe9c09cbfd827fb586c86b1ffe223e756d8b6',
+  scope: 'identity',
 };
 
 export function useOAuth() {
