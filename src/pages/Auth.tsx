@@ -10,7 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Trophy, Sparkles, Mail, Lock, User, ArrowLeft, ExternalLink } from 'lucide-react';
+import { Trophy, Sparkles, Mail, Lock, User, ArrowLeft } from 'lucide-react';
+import alikLogo from '@/assets/alik-logo.png';
 import { useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { useOAuth } from '@/hooks/useOAuth';
@@ -349,7 +350,7 @@ export default function Auth() {
                     }
                   }}
                 >
-                  <ExternalLink className="w-5 h-5" />
+                  <img src={alikLogo} alt="Alík" className="w-5 h-5" />
                   {oauthLoading ? 'Přesměrovávám...' : 'Přihlásit přes Alíka'}
                 </Button>
               </form>
