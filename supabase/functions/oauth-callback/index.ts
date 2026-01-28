@@ -159,9 +159,10 @@ serve(async (req) => {
         },
       });
       
-      // Also update profiles table
+      // Also update profiles table (including gender)
       await supabaseAdmin.from('profiles').update({
         username: username,
+        gender: userData.gender || null,
       }).eq('id', userId);
       
       console.log("Updated user metadata and profile for:", userId);
