@@ -97,24 +97,29 @@ serve(async (req) => {
     const userData = await userInfoResponse.json();
     console.log("User data received:", JSON.stringify(userData, null, 2));
 
-    // Extract username from user data - Seznam returns email, extract username from it
-    let username = userData.username || userData.login || userData.name || userData.preferred_username;
-    
-    // If no username but we have email, extract username from email
-    if (!username && userData.email) {
-      username = userData.email.split('@')[0];
-    }
+    // Alík.cz specific parsing - returns nickname, sub (user ID), user_link
+    const username = userData.nickname || userData.username || userData.name;
+    const alikUserId = userData.sub;  // Unique Alík user ID (number)
+    const userLink = userData.user_link;  // Profile URL on Alík.cz
     
     if (!username) {
-      console.error("No username found in user data:", userData);
+      console.error("No username (nickname) found in user data:", userData);
       return new Response(JSON.stringify({ error: "No username in OAuth response" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Use the actual email from OAuth if available, otherwise create fake one
-    const email = userData.email || `${username}@ls.local`;
+    if (!alikUserId) {
+      console.error("No alik user ID (sub) found in user data:", userData);
+      return new Response(JSON.stringify({ error: "No user ID in OAuth response" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Create synthetic email using Alík user ID for Supabase Auth
+    const email = `alik_${alikUserId}@ls.local`;
     
     // Initialize Supabase admin client
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -134,11 +139,32 @@ serve(async (req) => {
 
     let userId: string;
     let isNewUser = false;
-    const existingUser = existingUsers.users.find(u => u.email === email);
+    
+    // Find existing user by alik_user_id in metadata (not by email)
+    const existingUser = existingUsers.users.find(
+      u => u.user_metadata?.alik_user_id === alikUserId
+    );
 
     if (existingUser) {
       userId = existingUser.id;
       console.log("Existing user found:", userId);
+      
+      // Update metadata (nickname may have changed on Alík.cz)
+      await supabaseAdmin.auth.admin.updateUserById(userId, {
+        user_metadata: {
+          ...existingUser.user_metadata,
+          username,
+          user_link: userLink,
+          gender: userData.gender,
+        },
+      });
+      
+      // Also update profiles table
+      await supabaseAdmin.from('profiles').update({
+        username: username,
+      }).eq('id', userId);
+      
+      console.log("Updated user metadata and profile for:", userId);
     } else {
       // Create new user with random password (they'll use OAuth)
       const randomPassword = crypto.randomUUID() + crypto.randomUUID();
@@ -149,8 +175,10 @@ serve(async (req) => {
         email_confirm: true,
         user_metadata: {
           username,
-          oauth_provider: "custom",
-          ...userData, // Store additional OAuth data
+          alik_user_id: alikUserId,
+          user_link: userLink,
+          gender: userData.gender,
+          oauth_provider: "alik",
         },
       });
 
