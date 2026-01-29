@@ -6,6 +6,43 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Rate limiting configuration
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 10; // Max 10 requests per minute per IP
+
+// In-memory rate limit store (resets on function cold start)
+const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(ip: string): { allowed: boolean; remaining: number; resetIn: number } {
+  const now = Date.now();
+  const record = rateLimitStore.get(ip);
+
+  if (!record || now > record.resetAt) {
+    // New window or expired - reset counter
+    rateLimitStore.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - 1, resetIn: RATE_LIMIT_WINDOW_MS };
+  }
+
+  if (record.count >= RATE_LIMIT_MAX_REQUESTS) {
+    // Rate limit exceeded
+    return { allowed: false, remaining: 0, resetIn: record.resetAt - now };
+  }
+
+  // Increment counter
+  record.count++;
+  return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - record.count, resetIn: record.resetAt - now };
+}
+
+// Clean up old entries periodically (prevents memory leak)
+function cleanupRateLimitStore() {
+  const now = Date.now();
+  for (const [ip, record] of rateLimitStore.entries()) {
+    if (now > record.resetAt) {
+      rateLimitStore.delete(ip);
+    }
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -14,14 +51,60 @@ serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+  const origin = Deno.env.get("SITE_URL") || "https://lopi.lovable.app";
+
+  // Get client IP for rate limiting
+  const clientIP = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() 
+    || req.headers.get("cf-connecting-ip") 
+    || req.headers.get("x-real-ip") 
+    || "unknown";
+
+  // Check rate limit
+  const rateLimit = checkRateLimit(clientIP);
+  
+  // Clean up old entries occasionally
+  if (Math.random() < 0.1) {
+    cleanupRateLimitStore();
+  }
+
+  if (!rateLimit.allowed) {
+    console.warn(`Rate limit exceeded for IP: ${clientIP}`);
+    
+    // Log rate limit violation for security monitoring
+    try {
+      await supabaseAdmin.from('security_logs').insert({
+        event_type: 'rate_limit_exceeded',
+        ip_address: clientIP,
+        endpoint: 'oauth-callback',
+        details: { remaining: rateLimit.remaining, resetIn: rateLimit.resetIn }
+      });
+    } catch (e) {
+      // Table might not exist - ignore
+    }
+
+    return new Response(
+      JSON.stringify({ 
+        error: "Too many requests", 
+        message: "Příliš mnoho pokusů. Zkus to znovu za chvíli.",
+        retryAfter: Math.ceil(rateLimit.resetIn / 1000)
+      }),
+      {
+        status: 429,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+          "Retry-After": String(Math.ceil(rateLimit.resetIn / 1000)),
+          "X-RateLimit-Remaining": String(rateLimit.remaining),
+          "X-RateLimit-Reset": String(Math.ceil(rateLimit.resetIn / 1000))
+        },
+      }
+    );
+  }
 
   try {
     const url = new URL(req.url);
     const code = url.searchParams.get("code");
     const state = url.searchParams.get("state");
-    
-    // Get frontend origin for redirects
-    const origin = Deno.env.get("SITE_URL") || "https://lopi.lovable.app";
     
     if (!code) {
       console.error("Missing authorization code");
@@ -31,6 +114,18 @@ serve(async (req) => {
     // ====== CSRF PROTECTION: Validate state parameter ======
     if (!state) {
       console.error("Missing state parameter - CSRF protection failed");
+      
+      // Log potential CSRF attack
+      try {
+        await supabaseAdmin.from('security_logs').insert({
+          event_type: 'csrf_missing_state',
+          ip_address: clientIP,
+          endpoint: 'oauth-callback'
+        });
+      } catch (e) {
+        // Table might not exist
+      }
+      
       return Response.redirect(`${origin}/oauth?error=csrf_failed&error_description=Chybějící bezpečnostní token`, 302);
     }
 
@@ -112,6 +207,19 @@ serve(async (req) => {
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text();
       console.error("Token exchange failed:", tokenResponse.status, errorText);
+      
+      // Log failed token exchange (possible attack or expired code)
+      try {
+        await supabaseAdmin.from('security_logs').insert({
+          event_type: 'oauth_token_exchange_failed',
+          ip_address: clientIP,
+          endpoint: 'oauth-callback',
+          details: { status: tokenResponse.status }
+        });
+      } catch (e) {
+        // Ignore
+      }
+      
       return Response.redirect(`${origin}/oauth?error=token_exchange&error_description=Výměna tokenu selhala`, 302);
     }
 
@@ -289,6 +397,19 @@ serve(async (req) => {
       }
     }
 
+    // Log successful login
+    try {
+      await supabaseAdmin.from('security_logs').insert({
+        event_type: 'oauth_login_success',
+        ip_address: clientIP,
+        endpoint: 'oauth-callback',
+        user_id: userId,
+        details: { username, isNewUser }
+      });
+    } catch (e) {
+      // Table might not exist
+    }
+
     // Generate a session for the user
     // We'll use a magic link approach - generate a one-time token
     const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
@@ -314,12 +435,12 @@ serve(async (req) => {
       headers: {
         ...corsHeaders,
         Location: redirectUrl,
+        "X-RateLimit-Remaining": String(rateLimit.remaining),
       },
     });
 
   } catch (error) {
     console.error("OAuth callback error:", error);
-    const origin = Deno.env.get("SITE_URL") || "https://lopi.lovable.app";
     const errorMessage = error instanceof Error ? error.message : "Neočekávaná chyba";
     return Response.redirect(`${origin}/oauth?error=unexpected&error_description=${encodeURIComponent(errorMessage)}`, 302);
   }

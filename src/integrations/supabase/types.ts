@@ -216,6 +216,33 @@ export type Database = {
         }
         Relationships: []
       }
+      oauth_states: {
+        Row: {
+          code_verifier: string
+          created_at: string | null
+          expires_at: string
+          id: string
+          state: string
+          used_at: string | null
+        }
+        Insert: {
+          code_verifier: string
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          state: string
+          used_at?: string | null
+        }
+        Update: {
+          code_verifier?: string
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          state?: string
+          used_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -373,6 +400,21 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      purchase_item: {
+        Args: { _item_id: string; _quantity?: number; _user_id: string }
+        Returns: {
+          message: string
+          purchase_id: string
+          success: boolean
+        }[]
+      }
+      update_points: {
+        Args: { _amount: number; _user_id: string }
+        Returns: {
+          new_points: number
+          success: boolean
+        }[]
       }
     }
     Enums: {
