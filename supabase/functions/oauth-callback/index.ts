@@ -97,11 +97,16 @@ serve(async (req) => {
     const userData = await userInfoResponse.json();
     console.log("User data received:", JSON.stringify(userData, null, 2));
 
-    // Alík.cz specific parsing - returns nickname, sub (user ID), user_link
+    // Alík.cz specific parsing - returns nickname, sub (user ID), user_link, roles
     const username = userData.nickname || userData.username || userData.name;
     const alikUserId = userData.sub;  // Unique Alík user ID (number)
     const userLink = userData.user_link;  // Profile URL on Alík.cz
     const avatarUrl = username ? `https://www.alik.cz/-/avatar/${username}` : null;  // Avatar from Alík.cz
+    
+    // Parse Alík.cz roles (if provided by OAuth)
+    // Expected format from Alík: roles array or object with role flags
+    const alikRoles = userData.roles || userData.alik_roles || [];
+    console.log("Alík roles received:", alikRoles);
     
     if (!username) {
       console.error("No username (nickname) found in user data:", userData);
@@ -158,14 +163,16 @@ serve(async (req) => {
           user_link: userLink,
           gender: userData.gender,
           avatar_url: avatarUrl,
+          alik_roles: alikRoles,
         },
       });
       
-      // Also update profiles table (including gender and avatar)
+      // Also update profiles table (including gender, avatar, and alik_roles)
       await supabaseAdmin.from('profiles').update({
         username: username,
         gender: userData.gender || null,
         avatar_url: avatarUrl,
+        alik_roles: alikRoles,
       }).eq('id', userId);
       
       console.log("Updated user metadata and profile for:", userId);
@@ -183,6 +190,7 @@ serve(async (req) => {
           user_link: userLink,
           gender: userData.gender,
           avatar_url: avatarUrl,
+          alik_roles: alikRoles,
           oauth_provider: "alik",
         },
       });
