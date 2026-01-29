@@ -101,6 +101,7 @@ serve(async (req) => {
     const username = userData.nickname || userData.username || userData.name;
     const alikUserId = userData.sub;  // Unique Alík user ID (number)
     const userLink = userData.user_link;  // Profile URL on Alík.cz
+    const avatarUrl = username ? `https://www.alik.cz/-/avatar/${username}` : null;  // Avatar from Alík.cz
     
     if (!username) {
       console.error("No username (nickname) found in user data:", userData);
@@ -156,13 +157,15 @@ serve(async (req) => {
           username,
           user_link: userLink,
           gender: userData.gender,
+          avatar_url: avatarUrl,
         },
       });
       
-      // Also update profiles table (including gender)
+      // Also update profiles table (including gender and avatar)
       await supabaseAdmin.from('profiles').update({
         username: username,
         gender: userData.gender || null,
+        avatar_url: avatarUrl,
       }).eq('id', userId);
       
       console.log("Updated user metadata and profile for:", userId);
@@ -179,6 +182,7 @@ serve(async (req) => {
           alik_user_id: alikUserId,
           user_link: userLink,
           gender: userData.gender,
+          avatar_url: avatarUrl,
           oauth_provider: "alik",
         },
       });
