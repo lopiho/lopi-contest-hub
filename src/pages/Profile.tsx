@@ -361,7 +361,7 @@ export default function Profile() {
     setSendingMessage(false);
   };
 
-  // 2. Add/remove points
+  // 2. Add/remove points (using atomic RPC)
   const handleAddPoints = async () => {
     if (!profile) return;
     const points = parseInt(pointsToAdd);
@@ -372,12 +372,52 @@ export default function Profile() {
 
     setAddingPoints(true);
     
-    const { error } = await supabase
-      .from('profiles')
-      .update({ points: profile.points + points })
-      .eq('id', profile.id);
+    // Try atomic RPC first
+    // Type assertion needed because RPC function may not be in types yet
+    const { data: rpcResult, error: rpcError } = await (supabase.rpc as any)('update_points', {
+      _user_id: profile.id,
+      _amount: points
+    });
 
-    if (!error) {
+    let success = false;
+    let newPoints = profile.points + points;
+
+    if (rpcError && (rpcError.message.includes('function') || rpcError.code === '42883')) {
+      // Fallback to legacy method if RPC doesn't exist
+      const { data: freshProfile } = await supabase
+        .from('profiles')
+        .select('points')
+        .eq('id', profile.id)
+        .single();
+      
+      if (freshProfile) {
+        newPoints = freshProfile.points + points;
+        if (newPoints < 0) {
+          toast.error('Body nemohou jít do mínusu');
+          setAddingPoints(false);
+          return;
+        }
+        
+        const { error } = await supabase
+          .from('profiles')
+          .update({ points: newPoints })
+          .eq('id', profile.id);
+        
+        success = !error;
+      }
+    } else if (!rpcError) {
+      const result = rpcResult?.[0];
+      success = result?.success ?? false;
+      newPoints = result?.new_points ?? newPoints;
+      
+      if (!success) {
+        toast.error('Body nemohou jít do mínusu');
+        setAddingPoints(false);
+        return;
+      }
+    }
+
+    if (success || (!rpcError && rpcResult)) {
       // Send notification message
       if (pointsReason.trim()) {
         await supabase.from('messages').insert({
@@ -388,7 +428,7 @@ export default function Profile() {
         });
       }
       
-      setProfile({ ...profile, points: profile.points + points });
+      setProfile({ ...profile, points: newPoints });
       toast.success(points > 0 ? `Přidáno ${points} bodů` : `Odebráno ${Math.abs(points)} bodů`);
       setAddPointsOpen(false);
       setPointsToAdd('');

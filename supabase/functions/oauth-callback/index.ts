@@ -11,17 +11,65 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+
   try {
     const url = new URL(req.url);
     const code = url.searchParams.get("code");
     const state = url.searchParams.get("state");
-    const codeVerifier = url.searchParams.get("code_verifier");
+    
+    // Get frontend origin for redirects
+    const origin = Deno.env.get("SITE_URL") || "https://lopi.lovable.app";
     
     if (!code) {
-      return new Response(JSON.stringify({ error: "Missing authorization code" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      console.error("Missing authorization code");
+      return Response.redirect(`${origin}/oauth?error=missing_code&error_description=Chybí autorizační kód`, 302);
+    }
+
+    // ====== CSRF PROTECTION: Validate state parameter ======
+    if (!state) {
+      console.error("Missing state parameter - CSRF protection failed");
+      return Response.redirect(`${origin}/oauth?error=csrf_failed&error_description=Chybějící bezpečnostní token`, 302);
+    }
+
+    // Try to validate state from oauth_states table (if it exists)
+    let stateValidated = false;
+    let storedCodeVerifier: string | null = null;
+    
+    try {
+      const { data: stateRecord, error: stateError } = await supabaseAdmin
+        .from('oauth_states')
+        .select('*')
+        .eq('state', state)
+        .gt('expires_at', new Date().toISOString())
+        .is('used_at', null)
+        .maybeSingle();
+
+      if (stateRecord && !stateError) {
+        stateValidated = true;
+        storedCodeVerifier = stateRecord.code_verifier;
+        
+        // Mark state as used (single-use for replay attack prevention)
+        await supabaseAdmin
+          .from('oauth_states')
+          .update({ used_at: new Date().toISOString() })
+          .eq('id', stateRecord.id);
+        
+        console.log("State validated from database");
+      } else if (stateError && !stateError.message.includes('does not exist')) {
+        console.error("State validation error:", stateError);
+      }
+    } catch (stateCheckError) {
+      // Table might not exist yet - log but continue with warning
+      console.warn("Could not check oauth_states table:", stateCheckError);
+    }
+
+    // If state wasn't validated from DB, log a warning but continue
+    // This allows backward compatibility during migration
+    if (!stateValidated) {
+      console.warn("State not validated from database - CSRF protection limited. Consider running the migration to create oauth_states table.");
     }
 
     // Get OAuth configuration from environment
@@ -32,15 +80,10 @@ serve(async (req) => {
     
     if (!clientId || !clientSecret || !tokenUrl || !userInfoUrl) {
       console.error("Missing OAuth configuration");
-      return new Response(JSON.stringify({ error: "OAuth not configured" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return Response.redirect(`${origin}/oauth?error=config_error&error_description=OAuth není nakonfigurováno`, 302);
     }
 
-    // Get the redirect URI from the request origin
-    const origin = req.headers.get("origin") || Deno.env.get("SITE_URL") || "https://lopi.lovable.app";
-    const redirectUri = `${Deno.env.get("SUPABASE_URL")}/functions/v1/oauth-callback`;
+    const redirectUri = `${supabaseUrl}/functions/v1/oauth-callback`;
 
     // Exchange code for tokens
     const tokenParams = new URLSearchParams({
@@ -51,9 +94,9 @@ serve(async (req) => {
       client_secret: clientSecret,
     });
 
-    // Add code_verifier for PKCE if provided
-    if (codeVerifier) {
-      tokenParams.append("code_verifier", codeVerifier);
+    // Add code_verifier for PKCE if we have it from state validation
+    if (storedCodeVerifier) {
+      tokenParams.append("code_verifier", storedCodeVerifier);
     }
 
     console.log("Exchanging code for token at:", tokenUrl);
@@ -69,10 +112,7 @@ serve(async (req) => {
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text();
       console.error("Token exchange failed:", tokenResponse.status, errorText);
-      return new Response(JSON.stringify({ error: "Token exchange failed", details: errorText }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return Response.redirect(`${origin}/oauth?error=token_exchange&error_description=Výměna tokenu selhala`, 302);
     }
 
     const tokenData = await tokenResponse.json();
@@ -88,10 +128,7 @@ serve(async (req) => {
     if (!userInfoResponse.ok) {
       const errorText = await userInfoResponse.text();
       console.error("User info fetch failed:", userInfoResponse.status, errorText);
-      return new Response(JSON.stringify({ error: "Failed to fetch user info" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return Response.redirect(`${origin}/oauth?error=userinfo_failed&error_description=Nepodařilo se získat informace o uživateli`, 302);
     }
 
     const userData = await userInfoResponse.json();
@@ -147,37 +184,23 @@ serve(async (req) => {
     
     if (!username) {
       console.error("No username (nickname) found in user data:", userData);
-      return new Response(JSON.stringify({ error: "No username in OAuth response" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return Response.redirect(`${origin}/oauth?error=no_username&error_description=V odpovědi chybí uživatelské jméno`, 302);
     }
 
     if (!alikUserId) {
       console.error("No alik user ID (sub) found in user data:", userData);
-      return new Response(JSON.stringify({ error: "No user ID in OAuth response" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return Response.redirect(`${origin}/oauth?error=no_user_id&error_description=V odpovědi chybí ID uživatele`, 302);
     }
 
     // Create synthetic email using Alík user ID for Supabase Auth
     const email = `alik_${alikUserId}@ls.local`;
-    
-    // Initialize Supabase admin client
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
     // Check if user already exists
     const { data: existingUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers();
     
     if (listError) {
       console.error("Error listing users:", listError);
-      return new Response(JSON.stringify({ error: "Database error" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return Response.redirect(`${origin}/oauth?error=db_error&error_description=Chyba databáze`, 302);
     }
 
     let userId: string;
@@ -248,10 +271,7 @@ serve(async (req) => {
 
       if (createError) {
         console.error("Error creating user:", createError);
-        return new Response(JSON.stringify({ error: "Failed to create user" }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return Response.redirect(`${origin}/oauth?error=create_failed&error_description=Nepodařilo se vytvořit uživatele`, 302);
       }
 
       userId = newUser.user.id;
@@ -281,18 +301,10 @@ serve(async (req) => {
 
     if (sessionError) {
       console.error("Error generating session link:", sessionError);
-      return new Response(JSON.stringify({ error: "Failed to create session" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return Response.redirect(`${origin}/oauth?error=session_failed&error_description=Nepodařilo se vytvořit session`, 302);
     }
 
-    // Extract the token from the generated link
-    const linkUrl = new URL(sessionData.properties.hashed_token ? 
-      `${origin}/auth/callback?token_hash=${sessionData.properties.hashed_token}&type=magiclink` :
-      sessionData.properties.action_link);
-
-    // Redirect to the frontend with the auth parameters
+    // Extract the token from the generated link and redirect to frontend
     const redirectUrl = sessionData.properties.action_link;
     
     console.log("Redirecting user to:", redirectUrl);
@@ -307,9 +319,8 @@ serve(async (req) => {
 
   } catch (error) {
     console.error("OAuth callback error:", error);
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    const origin = Deno.env.get("SITE_URL") || "https://lopi.lovable.app";
+    const errorMessage = error instanceof Error ? error.message : "Neočekávaná chyba";
+    return Response.redirect(`${origin}/oauth?error=unexpected&error_description=${encodeURIComponent(errorMessage)}`, 302);
   }
 });

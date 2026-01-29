@@ -34,10 +34,47 @@ export function generateState(): string {
   return base64UrlEncode(array);
 }
 
-// Store PKCE values in sessionStorage
+// Store PKCE values in sessionStorage (client-side backup)
 export function storePKCEValues(state: string, codeVerifier: string): void {
   sessionStorage.setItem('oauth_state', state);
   sessionStorage.setItem('oauth_code_verifier', codeVerifier);
+}
+
+// Store state and code_verifier server-side for CSRF protection
+export async function storeStateServerSide(state: string, codeVerifier: string): Promise<boolean> {
+  try {
+    // Try to store in oauth_states table (if it exists)
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+    
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/oauth_states`,
+      {
+        method: 'POST',
+        headers: {
+          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({
+          state,
+          code_verifier: codeVerifier,
+          expires_at: expiresAt.toISOString()
+        })
+      }
+    );
+
+    if (response.ok) {
+      console.log('OAuth state stored server-side');
+      return true;
+    } else {
+      // Table might not exist - fall back to client-side storage
+      console.warn('Could not store OAuth state server-side, using client-side fallback');
+      return false;
+    }
+  } catch (error) {
+    console.warn('Error storing OAuth state server-side:', error);
+    return false;
+  }
 }
 
 // Retrieve and clear PKCE values
@@ -59,6 +96,9 @@ export async function buildAuthorizationUrl(
   const state = generateState();
   const codeVerifier = generateCodeVerifier();
   const codeChallenge = await generateCodeChallenge(codeVerifier);
+
+  // Try to store server-side for CSRF protection
+  await storeStateServerSide(state, codeVerifier);
 
   const params = new URLSearchParams({
     response_type: 'code',

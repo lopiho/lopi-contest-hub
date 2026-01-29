@@ -77,15 +77,88 @@ export default function Obchudek() {
   const handlePurchase = async () => {
     if (!selectedItem || !user) return;
 
+    // Pre-check (real validation happens in database function)
     if (userPoints < selectedItem.price) {
       toast.error('Nemáš dostatek bodů!');
       return;
     }
 
+    if (selectedItem.stock !== null && selectedItem.stock <= 0) {
+      toast.error('Tento předmět je vyprodán!');
+      return;
+    }
+
     setPurchasing(true);
 
-    // Check stock if applicable
-    if (selectedItem.stock !== null && selectedItem.stock <= 0) {
+    try {
+      // Use atomic database function for race-condition-safe purchase
+      // Type assertion needed because RPC function may not be in types yet
+      const { data, error } = await (supabase.rpc as any)('purchase_item', {
+        _user_id: user.id,
+        _item_id: selectedItem.id,
+        _quantity: 1
+      });
+
+      if (error) {
+        console.error('Purchase RPC error:', error);
+        // Fallback to legacy method if RPC doesn't exist yet
+        if (error.message.includes('function') || error.code === '42883') {
+          await handlePurchaseLegacy();
+          return;
+        }
+        toast.error('Chyba při nákupu');
+        setPurchasing(false);
+        return;
+      }
+
+      const result = data?.[0];
+      if (!result?.success) {
+        toast.error(result?.message || 'Nákup se nezdařil');
+        setPurchasing(false);
+        return;
+      }
+
+      toast.success(`Zakoupeno: ${selectedItem.name}!`);
+      setSelectedItem(null);
+      fetchData();
+    } catch (err) {
+      console.error('Purchase error:', err);
+      toast.error('Chyba při nákupu');
+    }
+    
+    setPurchasing(false);
+  };
+
+  // Legacy purchase method (fallback if RPC not available)
+  const handlePurchaseLegacy = async () => {
+    if (!selectedItem || !user) return;
+
+    // Fetch fresh data to minimize race condition window
+    const { data: freshProfile } = await supabase
+      .from('profiles')
+      .select('points')
+      .eq('id', user.id)
+      .single();
+
+    const { data: freshItem } = await supabase
+      .from('shop_items')
+      .select('price, stock, is_active')
+      .eq('id', selectedItem.id)
+      .single();
+
+    if (!freshProfile || !freshItem || !freshItem.is_active) {
+      toast.error('Chyba při ověřování nákupu');
+      setPurchasing(false);
+      return;
+    }
+
+    if (freshProfile.points < freshItem.price) {
+      toast.error('Nemáš dostatek bodů!');
+      setPurchasing(false);
+      return;
+    }
+
+    if (freshItem.stock !== null && freshItem.stock <= 0) {
       toast.error('Tento předmět je vyprodán!');
       setPurchasing(false);
       return;
@@ -96,7 +169,7 @@ export default function Obchudek() {
       user_id: user.id,
       item_id: selectedItem.id,
       quantity: 1,
-      total_price: selectedItem.price
+      total_price: freshItem.price
     });
 
     if (purchaseError) {
@@ -105,10 +178,10 @@ export default function Obchudek() {
       return;
     }
 
-    // Deduct points
+    // Deduct points using fresh value
     const { error: pointsError } = await supabase
       .from('profiles')
-      .update({ points: userPoints - selectedItem.price })
+      .update({ points: freshProfile.points - freshItem.price })
       .eq('id', user.id);
 
     if (pointsError) {
@@ -118,10 +191,10 @@ export default function Obchudek() {
     }
 
     // Decrease stock if applicable
-    if (selectedItem.stock !== null) {
+    if (freshItem.stock !== null) {
       await supabase
         .from('shop_items')
-        .update({ stock: selectedItem.stock - 1 })
+        .update({ stock: freshItem.stock - 1 })
         .eq('id', selectedItem.id);
     }
 

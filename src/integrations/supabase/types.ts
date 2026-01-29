@@ -376,7 +376,16 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "user" | "helper" | "organizer"
+      app_role:
+        | "user"
+        | "helper"
+        | "organizer"
+        | "alik_admin"
+        | "alik_helper"
+        | "alik_editor"
+        | "alik_club_manager"
+        | "alik_board_manager"
+        | "alik_jester"
       article_status:
         | "pending"
         | "approved"
@@ -511,7 +520,17 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["user", "helper", "organizer"],
+      app_role: [
+        "user",
+        "helper",
+        "organizer",
+        "alik_admin",
+        "alik_helper",
+        "alik_editor",
+        "alik_club_manager",
+        "alik_board_manager",
+        "alik_jester",
+      ],
       article_status: ["pending", "approved", "rejected", "rated", "published"],
       guessing_game_status: ["active", "closed", "resolved"],
     },

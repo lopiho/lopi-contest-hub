@@ -774,13 +774,25 @@ export default function Admin() {
       return;
     }
     if (points > 0) {
-      const {
-        data: profile
-      } = await supabase.from('profiles').select('points').eq('id', selectedArticleForPublish.author_id).maybeSingle();
-      if (profile) {
-        await supabase.from('profiles').update({
-          points: profile.points + points
-        }).eq('id', selectedArticleForPublish.author_id);
+      // Use atomic RPC function if available, fallback to legacy
+      // Type assertion needed because RPC function may not be in types yet
+      const { error: rpcError } = await (supabase.rpc as any)('update_points', {
+        _user_id: selectedArticleForPublish.author_id,
+        _amount: points
+      });
+      
+      if (rpcError && (rpcError.message?.includes('function') || rpcError.code === '42883')) {
+        // Fallback: fetch fresh and update
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('points')
+          .eq('id', selectedArticleForPublish.author_id)
+          .single();
+        if (profile) {
+          await supabase.from('profiles').update({
+            points: profile.points + points
+          }).eq('id', selectedArticleForPublish.author_id);
+        }
       }
     }
 
@@ -979,15 +991,26 @@ lopi`;
       is_winner: true
     }).eq('game_id', selectedGameForResolve.id).eq('user_id', selectedWinnerId);
 
-    // Award points
+    // Award points using atomic RPC
     if (points > 0) {
-      const {
-        data: profile
-      } = await supabase.from('profiles').select('points').eq('id', selectedWinnerId).maybeSingle();
-      if (profile) {
-        await supabase.from('profiles').update({
-          points: profile.points + points
-        }).eq('id', selectedWinnerId);
+      // Type assertion needed because RPC function may not be in types yet
+      const { error: rpcError } = await (supabase.rpc as any)('update_points', {
+        _user_id: selectedWinnerId,
+        _amount: points
+      });
+      
+      if (rpcError && (rpcError.message?.includes('function') || rpcError.code === '42883')) {
+        // Fallback: fetch fresh and update
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('points')
+          .eq('id', selectedWinnerId)
+          .single();
+        if (profile) {
+          await supabase.from('profiles').update({
+            points: profile.points + points
+          }).eq('id', selectedWinnerId);
+        }
       }
     }
     toast.success(`Tipovačka ukončena! Vítěz získal ${points} bodů`);
