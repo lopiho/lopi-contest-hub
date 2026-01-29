@@ -1,12 +1,11 @@
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 import { Music, ShoppingBag } from 'lucide-react';
-import AlikCrown, { AlikRoles } from './AlikCrown';
+import AlikCrown, { hasAlikRoles } from './AlikCrown';
 
 interface UserBadgeProps {
   username: string;
   roles?: string[];
-  alikRoles?: AlikRoles;
   className?: string;
   showAt?: boolean;
   linkToProfile?: boolean;
@@ -25,6 +24,18 @@ export const getRoleDisplayName = (role: string): string => {
       return 'Hudebník';
     case 'vedouci_prodejny':
       return 'Vedoucí prodejny';
+    case 'alik_admin':
+      return 'Zvěrolékař Alíka';
+    case 'alik_helper':
+      return 'Správce Alíka';
+    case 'alik_editor':
+      return 'Redaktor Alíka';
+    case 'alik_club_manager':
+      return 'Správce klubovny';
+    case 'alik_board_manager':
+      return 'Správce nástěnek';
+    case 'alik_jester':
+      return 'Alíkův šašek';
     case 'user':
       return 'Uživatel';
     default:
@@ -84,28 +95,18 @@ const StoreIcon = () => (
   <ShoppingBag className="w-4 h-4 inline-block ml-1 text-emerald-500" />
 );
 
-export default function UserBadge({ username, roles = [], alikRoles, className, showAt = true, linkToProfile = true }: UserBadgeProps) {
+export default function UserBadge({ username, roles = [], className, showAt = true, linkToProfile = true }: UserBadgeProps) {
   const isOrganizer = roles.includes('organizer');
   const isHelper = roles.includes('helper');
   const isVeverka = roles.includes('veverka');
   const isHudebnik = roles.includes('hudebnik');
   const isVedouciProdejny = roles.includes('vedouci_prodejny');
 
-  // Check if user has any Alík roles
-  const hasAlikRoles = alikRoles && (
-    alikRoles.isAdmin || 
-    alikRoles.isHelper || 
-    alikRoles.isEditor || 
-    alikRoles.isClubManager || 
-    alikRoles.isBoardManager || 
-    alikRoles.isJester
-  );
-
   const content = (
     <span className={cn("inline-flex items-center", linkToProfile && "hover:text-primary transition-colors", className)}>
       {showAt && '@'}{username}
       {/* Alík.cz roles (crowns) */}
-      {hasAlikRoles && <AlikCrown roles={alikRoles} className="ml-1" />}
+      {hasAlikRoles(roles) && <AlikCrown roles={roles} className="ml-1" />}
       {/* LS internal roles */}
       {isOrganizer && <Crown color="orange" />}
       {isHelper && !isOrganizer && <Crown color="pink" />}

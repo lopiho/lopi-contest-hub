@@ -104,9 +104,46 @@ serve(async (req) => {
     const avatarUrl = username ? `https://www.alik.cz/-/avatar/${username}` : null;  // Avatar from Alík.cz
     
     // Parse Alík.cz roles (if provided by OAuth)
-    // Expected format from Alík: roles array or object with role flags
-    const alikRoles = userData.roles || userData.alik_roles || [];
-    console.log("Alík roles received:", alikRoles);
+    // Map Alík roles to our app_role enum values
+    const rawAlikRoles = userData.roles || userData.alik_roles || [];
+    console.log("Raw Alík roles received:", rawAlikRoles);
+    
+    // Helper to convert Alík role names to our enum values
+    const mapAlikRolesToAppRoles = (roles: string[]): string[] => {
+      const mapped: string[] = [];
+      for (const role of roles) {
+        switch (role.toLowerCase()) {
+          case 'admin':
+          case 'zvěrolékař':
+            mapped.push('alik_admin');
+            break;
+          case 'helper':
+          case 'správce':
+            mapped.push('alik_helper');
+            break;
+          case 'editor':
+          case 'redaktor':
+            mapped.push('alik_editor');
+            break;
+          case 'club_manager':
+          case 'klubovna':
+            mapped.push('alik_club_manager');
+            break;
+          case 'board_manager':
+          case 'nástěnky':
+            mapped.push('alik_board_manager');
+            break;
+          case 'jester':
+          case 'šašek':
+            mapped.push('alik_jester');
+            break;
+        }
+      }
+      return mapped;
+    };
+    
+    const alikAppRoles = mapAlikRolesToAppRoles(Array.isArray(rawAlikRoles) ? rawAlikRoles : [rawAlikRoles]);
+    console.log("Mapped Alík roles:", alikAppRoles);
     
     if (!username) {
       console.error("No username (nickname) found in user data:", userData);
@@ -163,17 +200,32 @@ serve(async (req) => {
           user_link: userLink,
           gender: userData.gender,
           avatar_url: avatarUrl,
-          alik_roles: alikRoles,
         },
       });
       
-      // Also update profiles table (including gender, avatar, and alik_roles)
+      // Update profiles table (including gender and avatar)
       await supabaseAdmin.from('profiles').update({
         username: username,
         gender: userData.gender || null,
         avatar_url: avatarUrl,
-        alik_roles: alikRoles,
       }).eq('id', userId);
+      
+      // Sync Alík roles to user_roles table
+      // First, remove old alik_* roles
+      await supabaseAdmin.from('user_roles')
+        .delete()
+        .eq('user_id', userId)
+        .like('role', 'alik_%');
+      
+      // Then insert new roles
+      if (alikAppRoles.length > 0) {
+        const roleInserts = alikAppRoles.map(role => ({
+          user_id: userId,
+          role: role,
+        }));
+        await supabaseAdmin.from('user_roles').insert(roleInserts);
+        console.log("Inserted Alík roles:", alikAppRoles);
+      }
       
       console.log("Updated user metadata and profile for:", userId);
     } else {
@@ -190,7 +242,6 @@ serve(async (req) => {
           user_link: userLink,
           gender: userData.gender,
           avatar_url: avatarUrl,
-          alik_roles: alikRoles,
           oauth_provider: "alik",
         },
       });
@@ -206,6 +257,16 @@ serve(async (req) => {
       userId = newUser.user.id;
       isNewUser = true;
       console.log("New user created:", userId);
+      
+      // Insert Alík roles for new user
+      if (alikAppRoles.length > 0) {
+        const roleInserts = alikAppRoles.map(role => ({
+          user_id: userId,
+          role: role,
+        }));
+        await supabaseAdmin.from('user_roles').insert(roleInserts);
+        console.log("Inserted Alík roles for new user:", alikAppRoles);
+      }
     }
 
     // Generate a session for the user

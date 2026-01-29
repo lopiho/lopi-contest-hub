@@ -17,17 +17,8 @@ import crownRed101 from '@/assets/crowns/korunka-cervena-101.png';
 import crownRed110 from '@/assets/crowns/korunka-cervena-110.png';
 import crownRed111 from '@/assets/crowns/korunka-cervena-111.png';
 
-export interface AlikRoles {
-  isAdmin?: boolean;      // Blue crown - Zvěrolékař Alíka
-  isHelper?: boolean;     // Green crown - Správce Alíka
-  isEditor?: boolean;     // Red left tip (100) - Redaktor Alíka
-  isClubManager?: boolean; // Red middle tip (010) - Správce klubovny
-  isBoardManager?: boolean; // Red right tip (001) - Správce nástěnek
-  isJester?: boolean;     // Jester crown - Alíkův šašek
-}
-
 interface AlikCrownProps {
-  roles: AlikRoles;
+  roles: string[];
   className?: string;
   size?: 'sm' | 'md' | 'lg';
 }
@@ -49,15 +40,15 @@ const getRedCrownImage = (editor: boolean, club: boolean, board: boolean): strin
 };
 
 // Get role description for tooltip
-const getRoleDescription = (roles: AlikRoles): string[] => {
+const getRoleDescriptions = (roles: string[]): string[] => {
   const descriptions: string[] = [];
   
-  if (roles.isAdmin) descriptions.push('Zvěrolékař Alíka');
-  if (roles.isHelper) descriptions.push('Správce Alíka');
-  if (roles.isJester) descriptions.push('Alíkův šašek');
-  if (roles.isEditor) descriptions.push('Redaktor Alíka');
-  if (roles.isClubManager) descriptions.push('Správce klubovny');
-  if (roles.isBoardManager) descriptions.push('Správce nástěnek');
+  if (roles.includes('alik_admin')) descriptions.push('Zvěrolékař Alíka');
+  if (roles.includes('alik_helper')) descriptions.push('Správce Alíka');
+  if (roles.includes('alik_jester')) descriptions.push('Alíkův šašek');
+  if (roles.includes('alik_editor')) descriptions.push('Redaktor Alíka');
+  if (roles.includes('alik_club_manager')) descriptions.push('Správce klubovny');
+  if (roles.includes('alik_board_manager')) descriptions.push('Správce nástěnek');
   
   return descriptions;
 };
@@ -71,41 +62,44 @@ const sizeClasses = {
 export default function AlikCrown({ roles, className, size = 'sm' }: AlikCrownProps) {
   const crowns: { src: string; alt: string; priority: number }[] = [];
   
+  const isAlikAdmin = roles.includes('alik_admin');
+  const isAlikHelper = roles.includes('alik_helper');
+  const isAlikEditor = roles.includes('alik_editor');
+  const isAlikClubManager = roles.includes('alik_club_manager');
+  const isAlikBoardManager = roles.includes('alik_board_manager');
+  // const isAlikJester = roles.includes('alik_jester');
+  
   // Blue crown (highest priority - admin)
-  if (roles.isAdmin) {
+  if (isAlikAdmin) {
     crowns.push({ src: crownBlue, alt: 'Zvěrolékař Alíka', priority: 1 });
   }
   
   // Green crown (helper)
-  if (roles.isHelper && !roles.isAdmin) {
+  if (isAlikHelper && !isAlikAdmin) {
     crowns.push({ src: crownGreen, alt: 'Správce Alíka', priority: 2 });
   }
   
   // Red crown (editorial roles)
-  const hasRedRole = roles.isEditor || roles.isClubManager || roles.isBoardManager;
+  const hasRedRole = isAlikEditor || isAlikClubManager || isAlikBoardManager;
   if (hasRedRole) {
-    const redCrown = getRedCrownImage(
-      roles.isEditor || false,
-      roles.isClubManager || false,
-      roles.isBoardManager || false
-    );
+    const redCrown = getRedCrownImage(isAlikEditor, isAlikClubManager, isAlikBoardManager);
     if (redCrown) {
       const redRoles: string[] = [];
-      if (roles.isEditor) redRoles.push('Redaktor');
-      if (roles.isClubManager) redRoles.push('Správce klubovny');
-      if (roles.isBoardManager) redRoles.push('Správce nástěnek');
+      if (isAlikEditor) redRoles.push('Redaktor');
+      if (isAlikClubManager) redRoles.push('Správce klubovny');
+      if (isAlikBoardManager) redRoles.push('Správce nástěnek');
       crowns.push({ src: redCrown, alt: redRoles.join(', '), priority: 3 });
     }
   }
   
   // TODO: Jester crown when image is provided
-  // if (roles.isJester) {
+  // if (isAlikJester) {
   //   crowns.push({ src: crownJester, alt: 'Alíkův šašek', priority: 4 });
   // }
   
   if (crowns.length === 0) return null;
   
-  const descriptions = getRoleDescription(roles);
+  const descriptions = getRoleDescriptions(roles);
   
   return (
     <TooltipProvider>
@@ -134,18 +128,7 @@ export default function AlikCrown({ roles, className, size = 'sm' }: AlikCrownPr
   );
 }
 
-// Helper to parse Alík roles from OAuth data or stored metadata
-export function parseAlikRoles(alikRolesData: string | string[] | null | undefined): AlikRoles {
-  if (!alikRolesData) return {};
-  
-  const roles = Array.isArray(alikRolesData) ? alikRolesData : [alikRolesData];
-  
-  return {
-    isAdmin: roles.includes('admin') || roles.includes('zvěrolékař'),
-    isHelper: roles.includes('helper') || roles.includes('správce'),
-    isEditor: roles.includes('editor') || roles.includes('redaktor'),
-    isClubManager: roles.includes('club_manager') || roles.includes('klubovna'),
-    isBoardManager: roles.includes('board_manager') || roles.includes('nástěnky'),
-    isJester: roles.includes('jester') || roles.includes('šašek'),
-  };
+// Check if user has any Alík roles
+export function hasAlikRoles(roles: string[]): boolean {
+  return roles.some(r => r.startsWith('alik_'));
 }
