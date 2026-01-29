@@ -2062,6 +2062,12 @@ lopi`;
                       <SelectItem value="veverka">🐿️ Veverka (redakce)</SelectItem>
                       <SelectItem value="hudebnik">🎵 Hudebník (zábava)</SelectItem>
                       <SelectItem value="vedouci_prodejny">🛒 Vedoucí prodejny</SelectItem>
+                      <SelectItem value="alik_admin">🔵 Zvěrolékař Alíka</SelectItem>
+                      <SelectItem value="alik_helper">🟢 Správce Alíka</SelectItem>
+                      <SelectItem value="alik_editor">🔴 Redaktor Alíka</SelectItem>
+                      <SelectItem value="alik_club_manager">🔴 Správce klubovny</SelectItem>
+                      <SelectItem value="alik_board_manager">🔴 Správce nástěnek</SelectItem>
+                      <SelectItem value="alik_jester">🃏 Alíkův šašek</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

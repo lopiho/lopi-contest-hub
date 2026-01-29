@@ -413,7 +413,7 @@ export default function Profile() {
         .from('user_roles')
         .delete()
         .eq('user_id', profile.id)
-        .eq('role', newRole as 'helper' | 'organizer' | 'user');
+        .eq('role', newRole as any);
       
       if (!error) {
         setRoles(roles.filter(r => r !== newRole));
@@ -423,7 +423,7 @@ export default function Profile() {
       // Add role
       const { error } = await supabase
         .from('user_roles')
-        .insert([{ user_id: profile.id, role: newRole as 'helper' | 'organizer' | 'user' }]);
+        .insert([{ user_id: profile.id, role: newRole as any }]);
       
       if (!error) {
         setRoles([...roles, newRole]);
@@ -801,6 +801,30 @@ export default function Profile() {
                             <SelectItem value="organizer">
                               {roles.includes('organizer') ? '❌ Odebrat: ' : '✓ Přidat: '}
                               Organizátor
+                            </SelectItem>
+                            <SelectItem value="alik_admin">
+                              {roles.includes('alik_admin') ? '❌ Odebrat: ' : '✓ Přidat: '}
+                              🔵 Zvěrolékař Alíka
+                            </SelectItem>
+                            <SelectItem value="alik_helper">
+                              {roles.includes('alik_helper') ? '❌ Odebrat: ' : '✓ Přidat: '}
+                              🟢 Správce Alíka
+                            </SelectItem>
+                            <SelectItem value="alik_editor">
+                              {roles.includes('alik_editor') ? '❌ Odebrat: ' : '✓ Přidat: '}
+                              🔴 Redaktor Alíka
+                            </SelectItem>
+                            <SelectItem value="alik_club_manager">
+                              {roles.includes('alik_club_manager') ? '❌ Odebrat: ' : '✓ Přidat: '}
+                              🔴 Správce klubovny
+                            </SelectItem>
+                            <SelectItem value="alik_board_manager">
+                              {roles.includes('alik_board_manager') ? '❌ Odebrat: ' : '✓ Přidat: '}
+                              🔴 Správce nástěnek
+                            </SelectItem>
+                            <SelectItem value="alik_jester">
+                              {roles.includes('alik_jester') ? '❌ Odebrat: ' : '✓ Přidat: '}
+                              🃏 Alíkův šašek
                             </SelectItem>
                           </SelectContent>
                         </Select>
