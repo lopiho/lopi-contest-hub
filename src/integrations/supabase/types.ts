@@ -247,6 +247,7 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          for_fun: boolean | null
           gender: string | null
           id: string
           points: number
@@ -256,6 +257,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          for_fun?: boolean | null
           gender?: string | null
           id: string
           points?: number
@@ -265,6 +267,7 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           created_at?: string
+          for_fun?: boolean | null
           gender?: string | null
           id?: string
           points?: number

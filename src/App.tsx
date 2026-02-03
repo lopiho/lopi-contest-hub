@@ -1,8 +1,10 @@
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { toast } from "sonner";
 import { AuthProvider } from "@/contexts/AuthContext";
 import PasswordChangeChecker from "@/components/PasswordChangeChecker";
 import Layout from "@/components/layout/Layout";
@@ -24,7 +26,20 @@ import AuthExternal from "./pages/AuthExternal";
 
 const queryClient = new QueryClient();
 
-const App = () => (
+const App = () => {
+  // Global error handler for unhandled promise rejections
+  useEffect(() => {
+    const handleRejection = (event: PromiseRejectionEvent) => {
+      console.error("Unhandled rejection:", event.reason);
+      toast.error("Došlo k chybě. Zkuste to prosím znovu.");
+      event.preventDefault();
+    };
+
+    window.addEventListener("unhandledrejection", handleRejection);
+    return () => window.removeEventListener("unhandledrejection", handleRejection);
+  }, []);
+
+  return (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TooltipProvider>
@@ -49,12 +64,13 @@ const App = () => (
               <Route path="/posta" element={<Layout><Posta /></Layout>} />
               <Route path="/u/:username" element={<Layout><Profile /></Layout>} />
               <Route path="*" element={<Layout><NotFound /></Layout>} />
-            </Routes>
-          </BrowserRouter>
-        </PasswordChangeChecker>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+          </Routes>
+        </BrowserRouter>
+      </PasswordChangeChecker>
+    </TooltipProvider>
+  </AuthProvider>
+</QueryClientProvider>
+  );
+};
 
 export default App;
