@@ -25,6 +25,8 @@ CREATE TABLE public.profiles (
   avatar_url TEXT,
   points INTEGER DEFAULT 0 NOT NULL,
   bio TEXT,
+  gender TEXT,
+  for_fun BOOLEAN DEFAULT false, -- Hraje jen pro zábavu (nesoutěží o výhry)
   created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );

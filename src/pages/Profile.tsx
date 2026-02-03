@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Star, Trophy, FileText, MessageCircle, Edit2, Save, X, Mail, Send, Crown, Coins, Trash2, UserPlus, Key, Eye, EyeOff, ShoppingBag, AlertTriangle, Copy, Settings, BookOpen, History, Bell, Lock, Download, Ban, Flag, ClipboardList, UserCheck, RefreshCw, BarChart3, Camera } from 'lucide-react';
+import { Loader2, Star, Trophy, FileText, MessageCircle, Edit2, Save, X, Mail, Send, Crown, Coins, Trash2, UserPlus, Key, Eye, EyeOff, ShoppingBag, AlertTriangle, Copy, Settings, History, Bell, Lock, Download, Ban, Flag, ClipboardList, UserCheck, RefreshCw, BarChart3 } from 'lucide-react';
 import UserBadge, { getRoleDisplayName, getRoleBadgeColor } from '@/components/UserBadge';
 import { LvZJContent } from '@/lib/lvzj-parser';
 import { toast } from 'sonner';
@@ -102,9 +102,6 @@ export default function Profile() {
   const [resetPointsOpen, setResetPointsOpen] = useState(false);
   const [loadingPurchases, setLoadingPurchases] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
-  
-  // Avatar upload
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const isOwnProfile = user && profile && user.id === profile.id;
   const isOrganizer = viewerRoles.includes('organizer') || viewerRoles.includes('helper');
@@ -270,11 +267,8 @@ export default function Profile() {
     setExportingData(false);
   };
 
-  // 8. Open LvZJ documentation
-  const handleOpenLvzjDocs = () => {
-    window.open('/lvzj', '_blank');
-  };
-
+  // LvZJ documentation - removed (page no longer exists)
+  // Users can check the LvZJ syntax by looking at examples on the site
   // 9. Toggle email notifications (placeholder)
   const handleToggleNotifications = () => {
     setNotificationsEnabled(!notificationsEnabled);
@@ -282,51 +276,9 @@ export default function Profile() {
   };
 
   // 10. Avatar upload
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !profile || !isOwnProfile) return;
-    
-    if (!file.type.startsWith('image/')) {
-      toast.error('Vyber prosím obrázek');
-      return;
-    }
-    
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('Obrázek je příliš velký (max 2 MB)');
-      return;
-    }
-    
-    setUploadingAvatar(true);
-    
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${profile.id}-${Date.now()}.${fileExt}`;
-    
-    const { error: uploadError } = await supabase.storage
-      .from('tipovacky')
-      .upload(`avatars/${fileName}`, file, { upsert: true });
-    
-    if (uploadError) {
-      toast.error('Chyba při nahrávání avataru');
-      setUploadingAvatar(false);
-      return;
-    }
-    
-    const { data: urlData } = supabase.storage.from('tipovacky').getPublicUrl(`avatars/${fileName}`);
-    
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({ avatar_url: urlData.publicUrl })
-      .eq('id', profile.id);
-    
-    if (updateError) {
-      toast.error('Chyba při ukládání avataru');
-    } else {
-      setProfile({ ...profile, avatar_url: urlData.publicUrl });
-      toast.success('Avatar nahrán!');
-    }
-    
-    setUploadingAvatar(false);
-  };
+  // Avatar is now automatically loaded from Alík.cz based on username
+  // No manual upload functionality needed
+  const getAvatarUrl = (username: string) => `https://www.alik.cz/-/avatar/${encodeURIComponent(username)}`;
 
   // 10. View profile in new tab
   const handleOpenInNewTab = () => {
@@ -599,31 +551,20 @@ export default function Profile() {
         <Card className="mb-6">
           <CardContent className="pt-6">
             <div className="flex items-start gap-4">
-              {/* Avatar with upload */}
-              <div className="relative group">
+              {/* Avatar - automatically loaded from Alík.cz */}
+              <div className="relative">
                 <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-3xl font-display font-bold text-primary overflow-hidden">
-                  {profile.avatar_url ? (
-                    <img src={profile.avatar_url} alt={profile.username} className="w-full h-full object-cover" />
-                  ) : (
-                    profile.username.charAt(0).toUpperCase()
-                  )}
+                  <img 
+                    src={getAvatarUrl(profile.username)} 
+                    alt={profile.username} 
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Fallback to first letter if avatar fails to load
+                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.parentElement!.innerHTML = profile.username.charAt(0).toUpperCase();
+                    }}
+                  />
                 </div>
-                {isOwnProfile && (
-                  <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                    {uploadingAvatar ? (
-                      <Loader2 className="w-6 h-6 text-white animate-spin" />
-                    ) : (
-                      <Camera className="w-6 h-6 text-white" />
-                    )}
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      className="hidden" 
-                      onChange={handleAvatarUpload}
-                      disabled={uploadingAvatar}
-                    />
-                  </label>
-                )}
               </div>
 
               <div className="flex-1">
@@ -670,13 +611,7 @@ export default function Profile() {
                   Export dat
                 </Button>
                 
-                {/* 3. LvZJ documentation */}
-                <Button variant="outline" size="sm" onClick={handleOpenLvzjDocs}>
-                  <BookOpen className="w-4 h-4 mr-1" />
-                  Nápověda LvZJ
-                </Button>
-                
-                {/* 4. Toggle notifications */}
+                {/* 3. Toggle notifications */}
                 <Button 
                   variant={notificationsEnabled ? "outline" : "secondary"} 
                   size="sm" 

@@ -20,7 +20,7 @@ import Posta from "./pages/Posta";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import PravidlaOchranaOU from "./pages/PravidlaOchranaOU";
-import LvZJ from "./pages/LvZJ";
+import AuthExternal from "./pages/AuthExternal";
 
 const queryClient = new QueryClient();
 
@@ -45,7 +45,7 @@ const App = () => (
               <Route path="/admin" element={<Layout><Admin /></Layout>} />
               <Route path="/redakce" element={<Layout><Redakce /></Layout>} />
               <Route path="/pravidla-ochrana-ou" element={<Layout><PravidlaOchranaOU /></Layout>} />
-              <Route path="/lvzj" element={<Layout><LvZJ /></Layout>} />
+              <Route path="/auth/exter" element={<AuthExternal />} />
               <Route path="/posta" element={<Layout><Posta /></Layout>} />
               <Route path="/u/:username" element={<Layout><Profile /></Layout>} />
               <Route path="*" element={<Layout><NotFound /></Layout>} />

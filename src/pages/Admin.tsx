@@ -56,6 +56,7 @@ interface UserProfile {
   username: string;
   points: number;
   roles: string[];
+  for_fun: boolean;
 }
 interface ShopItem {
   id: string;
@@ -266,6 +267,7 @@ export default function Admin() {
     } = await supabase.from('user_roles').select('user_id, role');
     const mappedUsers = (profilesData || []).map(p => ({
       ...p,
+      for_fun: (p as any).for_fun ?? false,
       roles: (rolesData || []).filter(r => r.user_id === p.id).map(r => r.role)
     })) as UserProfile[];
     setUsers(mappedUsers);
@@ -906,6 +908,23 @@ lopi`;
     } else {
       toast.success('Role odebrána');
       fetchUsers();
+    }
+    setProcessing(false);
+  };
+
+  // Toggle for_fun flag
+  const handleToggleForFun = async (userId: string, currentValue: boolean) => {
+    setProcessing(true);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ for_fun: !currentValue } as any)
+      .eq('id', userId);
+    
+    if (error) {
+      toast.error('Chyba při změně statusu');
+    } else {
+      toast.success(!currentValue ? 'Uživatel nastaven jako "jen pro zábavu"' : 'Uživatel nastaven jako soutěžící');
+      setUsers(users.map(u => u.id === userId ? { ...u, for_fun: !currentValue } : u));
     }
     setProcessing(false);
   };
@@ -1667,10 +1686,13 @@ lopi`;
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {users.map(u => <Card key={u.id} className="shadow-card">
+              {users.map(u => <Card key={u.id} className={`shadow-card ${u.for_fun ? 'border-accent/50' : ''}`}>
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg"><UserBadge username={u.username} roles={u.roles} /></CardTitle>
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="text-lg"><UserBadge username={u.username} roles={u.roles} /></CardTitle>
+                        {u.for_fun && <Badge variant="outline" className="text-xs border-accent text-accent">🎉 Pro zábavu</Badge>}
+                      </div>
                       <Badge variant="secondary">{u.points} bodů</Badge>
                     </div>
                   </CardHeader>
@@ -1682,6 +1704,19 @@ lopi`;
                               ×
                             </button>}
                         </Badge>)}
+                    </div>
+                    <div className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-lg">
+                      <div className="flex items-center gap-2 text-sm">
+                        <span>{u.for_fun ? '🎉' : '🏆'}</span>
+                        <span className="text-muted-foreground">
+                          {u.for_fun ? 'Hraje pro zábavu' : 'Soutěží o výhru'}
+                        </span>
+                      </div>
+                      <Switch
+                        checked={u.for_fun}
+                        onCheckedChange={() => handleToggleForFun(u.id, u.for_fun)}
+                        disabled={processing}
+                      />
                     </div>
                     <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => setSelectedUserForRole(u)}>
                       <UserPlus className="w-4 h-4" />
