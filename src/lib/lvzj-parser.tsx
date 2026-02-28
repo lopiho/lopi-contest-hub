@@ -456,6 +456,16 @@ export function parseLvZJ(text: string, userRoles: string[] = []): React.ReactNo
     return `{{PLAYLIST:${urls.join('|||')}}}`;
   });
 
+  // Process HTML blocks (Organizer only)
+  processedText = processedText.replace(/\(html\)([\s\S]*?)\(konec html\)/gi, (match, content) => {
+    if (!userRoles.includes('organizer')) {
+      return '{{RESTRICTED:html}}';
+    }
+    // Base64 encode to prevent inner parsing
+    const encoded = btoa(unescape(encodeURIComponent(content.trim())));
+    return `{{HTML:${encoded}}}`;
+  });
+
   // Split by lines for line-based processing
   const lines = processedText.split('\n');
   const processedLines: React.ReactNode[] = [];
