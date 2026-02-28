@@ -629,6 +629,25 @@ function parseInline(text: string, userRoles: string[] = []): React.ReactNode {
       continue;
     }
 
+    // HTML placeholder (organizer only)
+    const htmlMatch = remaining.match(/^\{\{HTML:([\s\S]*?)\}\}/);
+    if (htmlMatch) {
+      try {
+        const decoded = decodeURIComponent(escape(atob(htmlMatch[1])));
+        const sanitized = DOMPurify.sanitize(decoded, {
+          ALLOWED_TAGS: ['div', 'span', 'p', 'br', 'b', 'i', 'u', 'strong', 'em', 'a', 'img', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'hr', 'blockquote', 'pre', 'code', 'small', 'sub', 'sup', 'mark', 'details', 'summary', 'figure', 'figcaption', 'center'],
+          ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'style', 'target', 'rel', 'width', 'height', 'colspan', 'rowspan'],
+        });
+        parts.push(
+          <div key={keyCounter++} className="lvzj-html-block my-2" dangerouslySetInnerHTML={{ __html: sanitized }} />
+        );
+      } catch {
+        parts.push(<span key={keyCounter++} className="text-destructive text-sm">[Chyba HTML]</span>);
+      }
+      remaining = remaining.substring(htmlMatch[0].length);
+      continue;
+    }
+
     // Restricted content placeholder
     const restrictedMatch = remaining.match(/^\{\{RESTRICTED:(\w+)\}\}/);
     if (restrictedMatch) {
