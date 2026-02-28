@@ -23,6 +23,7 @@ import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import PravidlaOchranaOU from "./pages/PravidlaOchranaOU";
 import AuthExternal from "./pages/AuthExternal";
+import AuthEmail from "./pages/AuthEmail";
 
 const queryClient = new QueryClient();
 
@@ -61,6 +62,7 @@ const App = () => {
               <Route path="/redakce" element={<Layout><Redakce /></Layout>} />
               <Route path="/pravidla-ochrana-ou" element={<Layout><PravidlaOchranaOU /></Layout>} />
               <Route path="/auth/exter" element={<AuthExternal />} />
+              <Route path="/auth/email" element={<AuthEmail />} />
               <Route path="/posta" element={<Layout><Posta /></Layout>} />
               <Route path="/u/:username" element={<Layout><Profile /></Layout>} />
               <Route path="*" element={<Layout><NotFound /></Layout>} />
