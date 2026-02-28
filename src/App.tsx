@@ -23,6 +23,7 @@ import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import PravidlaOchranaOU from "./pages/PravidlaOchranaOU";
 import AuthExternal from "./pages/AuthExternal";
+import AuthEmail from "./pages/AuthEmail";
 
 const queryClient = new QueryClient();
 
