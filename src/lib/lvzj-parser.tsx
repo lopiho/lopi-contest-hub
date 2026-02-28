@@ -1,6 +1,7 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { cn } from '@/lib/utils';
 import { ChevronDown, ChevronUp, Music, List, Lock } from 'lucide-react';
+import DOMPurify from 'dompurify';
 
 // LvZJ - Lopiho značkovací jazyk
 // Based on Alíkův značkovací jazyk
