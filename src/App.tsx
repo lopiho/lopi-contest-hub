@@ -14,6 +14,7 @@ import Auth from "./pages/Auth";
 import OAuthCallback from "./pages/OAuthCallback";
 import Clankovnice from "./pages/Clankovnice";
 import Tipovacky from "./pages/Tipovacky";
+import Sezona from "./pages/Sezona";
 import Redakce from "./pages/Redakce";
 
 import Obchudek from "./pages/Obchudek";
