@@ -14,7 +14,8 @@ import {
   Shield,
   Mail,
   Squirrel,
-  Package
+  Package,
+  Sparkles
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,6 +26,7 @@ const navItems = [
   { href: '/', label: 'Domů', icon: Trophy },
   { href: '/clankovnice', label: 'Článkovnice', icon: FileText },
   { href: '/tipovacky', label: 'Tipovačky', icon: HelpCircle },
+  { href: '/sezona', label: 'Sezóna', icon: Sparkles },
   { href: '/obchudek', label: 'Obchůdek', icon: ShoppingBag },
   { href: '/inventar', label: 'Inventář', icon: Package },
 ];

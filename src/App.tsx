@@ -7,12 +7,14 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { toast } from "sonner";
 import { AuthProvider } from "@/contexts/AuthContext";
 import PasswordChangeChecker from "@/components/PasswordChangeChecker";
+import CookieConsent from "@/components/CookieConsent";
 import Layout from "@/components/layout/Layout";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import OAuthCallback from "./pages/OAuthCallback";
 import Clankovnice from "./pages/Clankovnice";
 import Tipovacky from "./pages/Tipovacky";
+import Sezona from "./pages/Sezona";
 import Redakce from "./pages/Redakce";
 
 import Obchudek from "./pages/Obchudek";
@@ -47,6 +49,7 @@ const App = () => {
         <PasswordChangeChecker>
           <Toaster />
           <Sonner />
+          <CookieConsent />
           <BrowserRouter>
             <Routes>
               <Route path="/auth" element={<Auth />} />
@@ -55,7 +58,8 @@ const App = () => {
               <Route path="/" element={<Layout><Index /></Layout>} />
               <Route path="/clankovnice" element={<Layout><Clankovnice /></Layout>} />
               <Route path="/tipovacky" element={<Layout><Tipovacky /></Layout>} />
-              
+              <Route path="/tipovacky" element={<Layout><Tipovacky /></Layout>} />
+              <Route path="/sezona" element={<Layout><Sezona /></Layout>} />
               <Route path="/obchudek" element={<Layout><Obchudek /></Layout>} />
               <Route path="/inventar" element={<Layout><Inventar /></Layout>} />
               <Route path="/admin" element={<Layout><Admin /></Layout>} />

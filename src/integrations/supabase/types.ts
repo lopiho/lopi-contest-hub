@@ -79,6 +79,42 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_log: {
+        Row: {
+          action: string
+          changed_by: string | null
+          changed_by_role: string | null
+          created_at: string
+          id: string
+          new_data: Json | null
+          old_data: Json | null
+          record_id: string
+          table_name: string
+        }
+        Insert: {
+          action: string
+          changed_by?: string | null
+          changed_by_role?: string | null
+          created_at?: string
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id: string
+          table_name: string
+        }
+        Update: {
+          action?: string
+          changed_by?: string | null
+          changed_by_role?: string | null
+          created_at?: string
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id?: string
+          table_name?: string
+        }
+        Relationships: []
+      }
       deletion_requests: {
         Row: {
           created_at: string
@@ -313,6 +349,204 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      season_reward_claims: {
+        Row: {
+          claimed_at: string
+          id: string
+          reward_id: string
+          user_id: string
+        }
+        Insert: {
+          claimed_at?: string
+          id?: string
+          reward_id: string
+          user_id: string
+        }
+        Update: {
+          claimed_at?: string
+          id?: string
+          reward_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "season_reward_claims_reward_id_fkey"
+            columns: ["reward_id"]
+            isOneToOne: false
+            referencedRelation: "season_rewards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      season_rewards: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          required_correct_count: number
+          reward_type: string
+          reward_value: number
+          season_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          required_correct_count?: number
+          reward_type?: string
+          reward_value?: number
+          season_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          required_correct_count?: number
+          reward_type?: string
+          reward_value?: number
+          season_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "season_rewards_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      season_riddle_attempts: {
+        Row: {
+          answer: string
+          created_at: string
+          id: string
+          is_correct: boolean
+          riddle_id: string
+          user_id: string
+        }
+        Insert: {
+          answer: string
+          created_at?: string
+          id?: string
+          is_correct?: boolean
+          riddle_id: string
+          user_id: string
+        }
+        Update: {
+          answer?: string
+          created_at?: string
+          id?: string
+          is_correct?: boolean
+          riddle_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "season_riddle_attempts_riddle_id_fkey"
+            columns: ["riddle_id"]
+            isOneToOne: false
+            referencedRelation: "season_riddles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      season_riddles: {
+        Row: {
+          answer: string
+          created_at: string
+          created_by: string
+          hint: string | null
+          id: string
+          is_published: boolean
+          question: string
+          reward_discount_percent: number | null
+          reward_item_id: string | null
+          scheduled_date: string
+          season_id: string
+          title: string
+        }
+        Insert: {
+          answer: string
+          created_at?: string
+          created_by: string
+          hint?: string | null
+          id?: string
+          is_published?: boolean
+          question: string
+          reward_discount_percent?: number | null
+          reward_item_id?: string | null
+          scheduled_date: string
+          season_id: string
+          title: string
+        }
+        Update: {
+          answer?: string
+          created_at?: string
+          created_by?: string
+          hint?: string | null
+          id?: string
+          is_published?: boolean
+          question?: string
+          reward_discount_percent?: number | null
+          reward_item_id?: string | null
+          scheduled_date?: string
+          season_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "season_riddles_reward_item_id_fkey"
+            columns: ["reward_item_id"]
+            isOneToOne: false
+            referencedRelation: "shop_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "season_riddles_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seasons: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          is_active: boolean
+          is_visible: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_visible?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_visible?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       security_logs: {
         Row: {
