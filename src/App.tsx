@@ -58,7 +58,8 @@ const App = () => {
               <Route path="/" element={<Layout><Index /></Layout>} />
               <Route path="/clankovnice" element={<Layout><Clankovnice /></Layout>} />
               <Route path="/tipovacky" element={<Layout><Tipovacky /></Layout>} />
-              
+              <Route path="/tipovacky" element={<Layout><Tipovacky /></Layout>} />
+              <Route path="/sezona" element={<Layout><Sezona /></Layout>} />
               <Route path="/obchudek" element={<Layout><Obchudek /></Layout>} />
               <Route path="/inventar" element={<Layout><Inventar /></Layout>} />
               <Route path="/admin" element={<Layout><Admin /></Layout>} />
