@@ -25,6 +25,7 @@ const navItems = [
   { href: '/', label: 'Domů', icon: Trophy },
   { href: '/clankovnice', label: 'Článkovnice', icon: FileText },
   { href: '/tipovacky', label: 'Tipovačky', icon: HelpCircle },
+  { href: '/sezona', label: 'Sezóna', icon: Sparkles },
   { href: '/obchudek', label: 'Obchůdek', icon: ShoppingBag },
   { href: '/inventar', label: 'Inventář', icon: Package },
 ];
