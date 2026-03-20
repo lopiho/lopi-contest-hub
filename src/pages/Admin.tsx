@@ -1300,6 +1300,7 @@ lopi`;
             <TabsTrigger value="security" className="gap-2"><Shield className="w-4 h-4" />Security</TabsTrigger>
             <TabsTrigger value="rls" className="gap-2"><Lock className="w-4 h-4" />RLS</TabsTrigger>
             <TabsTrigger value="svn" className="gap-2"><ScrollText className="w-4 h-4" />SVN</TabsTrigger>
+            <TabsTrigger value="audit" className="gap-2"><ScrollText className="w-4 h-4" />Protokol</TabsTrigger>
             <TabsTrigger value="gdpr" className="gap-2">
               <Trash2 className="w-4 h-4" />
               GDPR {deletionRequests.length > 0 && <Badge variant="destructive" className="ml-1">{deletionRequests.length}</Badge>}
