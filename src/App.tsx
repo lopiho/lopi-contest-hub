@@ -48,6 +48,7 @@ const App = () => {
         <PasswordChangeChecker>
           <Toaster />
           <Sonner />
+          <CookieConsent />
           <BrowserRouter>
             <Routes>
               <Route path="/auth" element={<Auth />} />
