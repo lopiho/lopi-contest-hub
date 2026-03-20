@@ -2016,6 +2016,11 @@ lopi`;
           <TabsContent value="svn" className="space-y-6">
             <SystemChangelog isAdmin={true} />
           </TabsContent>
+
+          {/* Audit Log Tab */}
+          <TabsContent value="audit" className="space-y-6">
+            <AuditLog />
+          </TabsContent>
         </Tabs>
 
         {/* Publish Article Dialog */}
