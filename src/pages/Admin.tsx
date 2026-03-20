@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import SecurityLogs from '@/components/SecurityLogs';
 import RlsPoliciesOverview from '@/components/RlsPoliciesOverview';
 import SystemChangelog from '@/components/SystemChangelog';
+import AuditLog from '@/components/AuditLog';
 import { Switch } from '@/components/ui/switch';
 import { Navigate } from 'react-router-dom';
 interface Article {
