@@ -1303,6 +1303,7 @@ lopi`;
             <TabsTrigger value="svn" className="gap-2"><ScrollText className="w-4 h-4" />SVN</TabsTrigger>
             <TabsTrigger value="audit" className="gap-2"><ScrollText className="w-4 h-4" />Protokol</TabsTrigger>
             <TabsTrigger value="spotlights" className="gap-2"><Sparkles className="w-4 h-4" />Poutáváky</TabsTrigger>
+            <TabsTrigger value="competition" className="gap-2"><Trophy className="w-4 h-4" />Soutěž</TabsTrigger>
             <TabsTrigger value="gdpr" className="gap-2">
               <Trash2 className="w-4 h-4" />
               GDPR {deletionRequests.length > 0 && <Badge variant="destructive" className="ml-1">{deletionRequests.length}</Badge>}
