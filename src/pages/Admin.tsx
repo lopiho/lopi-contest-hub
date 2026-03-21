@@ -20,6 +20,7 @@ import SecurityLogs from '@/components/SecurityLogs';
 import RlsPoliciesOverview from '@/components/RlsPoliciesOverview';
 import SystemChangelog from '@/components/SystemChangelog';
 import AuditLog from '@/components/AuditLog';
+import SpotlightManager from '@/components/SpotlightManager';
 import { Switch } from '@/components/ui/switch';
 import { Navigate } from 'react-router-dom';
 interface Article {
@@ -1301,6 +1302,7 @@ lopi`;
             <TabsTrigger value="rls" className="gap-2"><Lock className="w-4 h-4" />RLS</TabsTrigger>
             <TabsTrigger value="svn" className="gap-2"><ScrollText className="w-4 h-4" />SVN</TabsTrigger>
             <TabsTrigger value="audit" className="gap-2"><ScrollText className="w-4 h-4" />Protokol</TabsTrigger>
+            <TabsTrigger value="spotlights" className="gap-2"><Sparkles className="w-4 h-4" />Poutáváky</TabsTrigger>
             <TabsTrigger value="gdpr" className="gap-2">
               <Trash2 className="w-4 h-4" />
               GDPR {deletionRequests.length > 0 && <Badge variant="destructive" className="ml-1">{deletionRequests.length}</Badge>}
@@ -2020,6 +2022,11 @@ lopi`;
           {/* Audit Log Tab */}
           <TabsContent value="audit" className="space-y-6">
             <AuditLog />
+          </TabsContent>
+
+          {/* Spotlights Tab */}
+          <TabsContent value="spotlights" className="space-y-6">
+            <SpotlightManager />
           </TabsContent>
         </Tabs>
 

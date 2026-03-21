@@ -2,6 +2,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import Dashboard from '@/components/Dashboard';
 import Leaderboard from '@/components/Leaderboard';
 import PublishedArticlesCarousel from '@/components/PublishedArticlesCarousel';
 import { 
@@ -86,6 +87,28 @@ export default function Index() {
     });
   };
 
+  if (user) {
+    return (
+      <div className="min-h-[calc(100vh-4rem)]">
+        <section className="py-8 lg:py-12">
+          <div className="container mx-auto px-4">
+            <Dashboard />
+          </div>
+        </section>
+
+        {/* Published Articles */}
+        <PublishedArticlesCarousel />
+
+        {/* Footer */}
+        <footer className="py-8 border-t">
+          <div className="container mx-auto px-4 text-center text-muted-foreground text-sm">
+            <p>© 2024 Lopiho Soutěž. Všechna práva vyhrazena.</p>
+          </div>
+        </footer>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-[calc(100vh-4rem)]">
       {/* Hero Section */}
@@ -113,23 +136,13 @@ export default function Index() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center animate-slide-up" style={{ animationDelay: '0.2s' }}>
-              {user ? (
-                <Link to="/clankovnice">
-                  <Button variant="hero" size="xl" className="gap-2">
-                    <FileText className="w-5 h-5" />
-                    Začít soutěžit
-                    <ArrowRight className="w-5 h-5" />
-                  </Button>
-                </Link>
-              ) : (
-                <Link to="/auth">
-                  <Button variant="hero" size="xl" className="gap-2">
-                    <Trophy className="w-5 h-5" />
-                    Připojit se
-                    <ArrowRight className="w-5 h-5" />
-                  </Button>
-                </Link>
-              )}
+              <Link to="/auth">
+                <Button variant="hero" size="xl" className="gap-2">
+                  <Trophy className="w-5 h-5" />
+                  Připojit se
+                  <ArrowRight className="w-5 h-5" />
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
@@ -273,24 +286,22 @@ export default function Index() {
       </section>
 
       {/* CTA Section */}
-      {!user && (
-        <section className="py-16 bg-secondary">
-          <div className="container mx-auto px-4 text-center">
-            <h2 className="text-3xl md:text-4xl font-display font-bold text-secondary-foreground mb-4">
-              Připraven soutěžit?
-            </h2>
-            <p className="text-secondary-foreground/80 mb-8 max-w-xl mx-auto">
-              Zaregistruj se zdarma a začni sbírat body ještě dnes!
-            </p>
-            <Link to="/auth">
-              <Button variant="hero" size="xl" className="gap-2">
-                <Trophy className="w-5 h-5" />
-                Vytvořit účet
-              </Button>
-            </Link>
-          </div>
-        </section>
-      )}
+      <section className="py-16 bg-secondary">
+        <div className="container mx-auto px-4 text-center">
+          <h2 className="text-3xl md:text-4xl font-display font-bold text-secondary-foreground mb-4">
+            Připraven soutěžit?
+          </h2>
+          <p className="text-secondary-foreground/80 mb-8 max-w-xl mx-auto">
+            Zaregistruj se zdarma a začni sbírat body ještě dnes!
+          </p>
+          <Link to="/auth">
+            <Button variant="hero" size="xl" className="gap-2">
+              <Trophy className="w-5 h-5" />
+              Vytvořit účet
+            </Button>
+          </Link>
+        </div>
+      </section>
 
       {/* Footer */}
       <footer className="py-8 border-t">
