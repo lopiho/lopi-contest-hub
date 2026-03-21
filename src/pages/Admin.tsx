@@ -2029,6 +2029,11 @@ lopi`;
           <TabsContent value="spotlights" className="space-y-6">
             <SpotlightManager />
           </TabsContent>
+
+          {/* Competition Management Tab */}
+          <TabsContent value="competition" className="space-y-6">
+            <CompetitionManager />
+          </TabsContent>
         </Tabs>
 
         {/* Publish Article Dialog */}
