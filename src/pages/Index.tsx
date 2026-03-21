@@ -2,6 +2,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import Dashboard from '@/components/Dashboard';
 import Leaderboard from '@/components/Leaderboard';
 import PublishedArticlesCarousel from '@/components/PublishedArticlesCarousel';
 import { 

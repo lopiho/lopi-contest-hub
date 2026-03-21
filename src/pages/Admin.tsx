@@ -2023,6 +2023,11 @@ lopi`;
           <TabsContent value="audit" className="space-y-6">
             <AuditLog />
           </TabsContent>
+
+          {/* Spotlights Tab */}
+          <TabsContent value="spotlights" className="space-y-6">
+            <SpotlightManager />
+          </TabsContent>
         </Tabs>
 
         {/* Publish Article Dialog */}
