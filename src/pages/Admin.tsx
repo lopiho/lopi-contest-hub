@@ -20,6 +20,7 @@ import SecurityLogs from '@/components/SecurityLogs';
 import RlsPoliciesOverview from '@/components/RlsPoliciesOverview';
 import SystemChangelog from '@/components/SystemChangelog';
 import AuditLog from '@/components/AuditLog';
+import SpotlightManager from '@/components/SpotlightManager';
 import { Switch } from '@/components/ui/switch';
 import { Navigate } from 'react-router-dom';
 interface Article {
