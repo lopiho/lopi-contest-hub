@@ -8,7 +8,7 @@ import {
 // OAuth configuration for Alík
 const OAUTH_CONFIG = {
   authorizationUrl: 'https://www.alik.cz/oauth/authorize',
-  clientId: '5b79f527e84fe9c09cbfd827fb586c86b1ffe223e756d8b6',
+  clientId: 'lopiho-soutez',
   scope: 'identity',
 };
 
