@@ -220,8 +220,42 @@ serve(async (req) => {
     });
 
     if (!tokenResponse.ok) {
-      const errorText = await tokenResponse.text();
-      console.error("Token exchange failed:", tokenResponse.status, errorText);
+      const rawErrorBody = await tokenResponse.text();
+      const headerSnapshot = {
+        contentType: tokenResponse.headers.get("content-type"),
+        cacheControl: tokenResponse.headers.get("cache-control"),
+        xRequestId: tokenResponse.headers.get("x-request-id"),
+        xCorrelationId: tokenResponse.headers.get("x-correlation-id"),
+      };
+
+      let parsedErrorBody: unknown = null;
+      try {
+        parsedErrorBody = rawErrorBody ? JSON.parse(rawErrorBody) : null;
+      } catch {
+        parsedErrorBody = null;
+      }
+
+      const bodyPreview = rawErrorBody.length > 3000
+        ? `${rawErrorBody.slice(0, 3000)}...[truncated]`
+        : rawErrorBody;
+
+      console.error(
+        "Token exchange failed details:",
+        JSON.stringify({
+          status: tokenResponse.status,
+          statusText: tokenResponse.statusText,
+          tokenUrl,
+          headerSnapshot,
+          bodyPreview,
+          parsedErrorBody,
+          requestContext: {
+            redirectUri,
+            stateValidated,
+            hasCodeVerifier: Boolean(storedCodeVerifier),
+            codeLength: code.length,
+          },
+        })
+      );
       
       // Log failed token exchange (possible attack or expired code)
       try {
@@ -229,7 +263,15 @@ serve(async (req) => {
           event_type: 'oauth_token_exchange_failed',
           ip_address: clientIP,
           endpoint: 'oauth-callback',
-          details: { status: tokenResponse.status }
+          details: {
+            status: tokenResponse.status,
+            status_text: tokenResponse.statusText,
+            token_url: tokenUrl,
+            body_preview: bodyPreview,
+            parsed_error: parsedErrorBody,
+            has_code_verifier: Boolean(storedCodeVerifier),
+            state_validated: stateValidated,
+          }
         });
       } catch (e) {
         // Ignore
@@ -239,6 +281,11 @@ serve(async (req) => {
     }
 
     const tokenData = await tokenResponse.json();
+    if (!tokenData?.access_token) {
+      console.error("Token endpoint response missing access_token:", JSON.stringify(tokenData));
+      return Response.redirect(`${origin}/oauth?error=token_exchange&error_description=Token endpoint nevrátil access_token`, 302);
+    }
+
     console.log("Token received successfully");
 
     // Fetch user info
