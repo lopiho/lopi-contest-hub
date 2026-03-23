@@ -161,10 +161,25 @@ serve(async (req) => {
       console.warn("Could not check oauth_states table:", stateCheckError);
     }
 
-    // If state wasn't validated from DB, log a warning but continue
-    // This allows backward compatibility during migration
-    if (!stateValidated) {
-      console.warn("State not validated from database - CSRF protection limited. Consider running the migration to create oauth_states table.");
+    // If state wasn't validated from DB, fail fast (prevents CSRF and PKCE failures)
+    if (!stateValidated || !storedCodeVerifier) {
+      console.error("State validation failed - rejecting OAuth callback");
+
+      try {
+        await supabaseAdmin.from('security_logs').insert({
+          event_type: 'csrf_invalid_state',
+          ip_address: clientIP,
+          endpoint: 'oauth-callback',
+          details: { hasState: Boolean(state), stateValidated }
+        });
+      } catch (e) {
+        // Table might not exist
+      }
+
+      return Response.redirect(
+        `${origin}/oauth?error=csrf_failed&error_description=Neplatný nebo expirovaný bezpečnostní token`,
+        302
+      );
     }
 
     // Get OAuth configuration from environment
