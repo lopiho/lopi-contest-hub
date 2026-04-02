@@ -227,6 +227,9 @@ serve(async (req) => {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
+        "Accept": "application/json",
+        "User-Agent": "Mozilla/5.0 (compatible; LopihoSoutezOAuth/1.0; +https://lopi.lovable.app)",
+        "Connection": "close",
       },
       body: tokenParams.toString(),
     });
@@ -304,6 +307,9 @@ serve(async (req) => {
     const userInfoResponse = await fetch(userInfoUrl, {
       headers: {
         Authorization: `Bearer ${tokenData.access_token}`,
+        "Accept": "application/json",
+        "User-Agent": "Mozilla/5.0 (compatible; LopihoSoutezOAuth/1.0; +https://lopi.lovable.app)",
+        "Connection": "close",
       },
     });
 
