@@ -5,9 +5,9 @@ import {
   retrievePKCEValues 
 } from '@/lib/oauth';
 
-// OAuth configuration for Alík/Seznam OAuth
+// OAuth configuration for Alík OAuth
 const OAUTH_CONFIG = {
-  authorizationUrl: 'https://login.szn.cz/api/v1/oauth/auth',
+  authorizationUrl: 'https://www.alik.cz/oauth/authorize',
   clientId: 'lopiho-soutez',
   scope: 'identity',
 };

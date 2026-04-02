@@ -10,6 +10,12 @@ const corsHeaders = {
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
 const RATE_LIMIT_MAX_REQUESTS = 10; // Max 10 requests per minute per IP
 
+const ALIK_OAUTH_ENDPOINTS = {
+  authorizationUrl: "https://www.alik.cz/oauth/authorize",
+  tokenUrl: "https://www.alik.cz/oauth/token",
+  userInfoUrl: "https://www.alik.cz/oauth/userinfo",
+};
+
 // In-memory rate limit store (resets on function cold start)
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 
@@ -185,8 +191,14 @@ serve(async (req) => {
     // Get OAuth configuration from environment
     const clientId = Deno.env.get("OAUTH_CLIENT_ID");
     const clientSecret = Deno.env.get("OAUTH_CLIENT_SECRET");
-    const tokenUrl = Deno.env.get("OAUTH_TOKEN_URL");
-    const userInfoUrl = Deno.env.get("OAUTH_USERINFO_URL");
+    const configuredTokenUrl = Deno.env.get("OAUTH_TOKEN_URL");
+    const configuredUserInfoUrl = Deno.env.get("OAUTH_USERINFO_URL");
+    const tokenUrl = configuredTokenUrl?.includes("alik.cz/oauth/")
+      ? configuredTokenUrl
+      : ALIK_OAUTH_ENDPOINTS.tokenUrl;
+    const userInfoUrl = configuredUserInfoUrl?.includes("alik.cz/oauth/")
+      ? configuredUserInfoUrl
+      : ALIK_OAUTH_ENDPOINTS.userInfoUrl;
     
     if (!clientId || !clientSecret || !tokenUrl || !userInfoUrl) {
       console.error("Missing OAuth configuration");
