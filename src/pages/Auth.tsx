@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Trophy, Sparkles, Mail, Lock, User, ArrowLeft } from 'lucide-react';
+import { Trophy, Sparkles, Mail, Lock, User, ArrowLeft, ExternalLink } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 
