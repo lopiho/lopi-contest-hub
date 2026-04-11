@@ -16,19 +16,9 @@ interface PublishedArticle {
   created_at: string;
   author_id: string;
   author_username: string;
-  author_gender: string | null;
   author_roles: string[];
   ratings: number[];
 }
-
-const getPublishedByText = (username: string, gender: string | null) => {
-  if (gender === 'male') {
-    return `Tento příspěvek zveřejnil ${username}`;
-  } else if (gender === 'female') {
-    return `Tento příspěvek zveřejnila ${username}`;
-  }
-  return `Autor: ${username}`;
-};
 
 export default function PublishedArticlesList() {
   const [articles, setArticles] = useState<PublishedArticle[]>([]);
@@ -65,29 +55,24 @@ export default function PublishedArticlesList() {
         .select('user_id, role')
         .in('user_id', authorIds);
 
-      // Type assertion to handle potential gender column (will be added via migration)
-      const profileMap = new Map(profiles?.map(p => [p.id, { username: p.username, gender: (p as any).gender || null }]) || []);
+      const profileMap = new Map(profiles?.map(p => [p.id, p.username]) || []);
       const rolesMap = new Map<string, string[]>();
       rolesData?.forEach(r => {
         if (!rolesMap.has(r.user_id)) rolesMap.set(r.user_id, []);
         rolesMap.get(r.user_id)!.push(r.role);
       });
 
-      const mapped = articlesData.map(a => {
-        const profile = profileMap.get(a.author_id);
-        return {
-          id: a.id,
-          title: a.title,
-          content: a.content,
-          points_awarded: a.points_awarded || 0,
-          created_at: a.created_at,
-          author_id: a.author_id,
-          author_username: profile?.username || 'Neznámý',
-          author_gender: profile?.gender || null,
-          author_roles: rolesMap.get(a.author_id) || [],
-          ratings: (a.article_ratings || []).map((r: { rating: number }) => r.rating),
-        };
-      });
+      const mapped = articlesData.map(a => ({
+        id: a.id,
+        title: a.title,
+        content: a.content,
+        points_awarded: a.points_awarded || 0,
+        created_at: a.created_at,
+        author_id: a.author_id,
+        author_username: profileMap.get(a.author_id) || 'Neznámý',
+        author_roles: rolesMap.get(a.author_id) || [],
+        ratings: (a.article_ratings || []).map((r: { rating: number }) => r.rating),
+      }));
 
       setArticles(mapped);
     }
@@ -179,12 +164,9 @@ export default function PublishedArticlesList() {
                   </div>
                   
                   <div className="flex items-center justify-between pt-4 border-t">
-                    <span className="text-sm text-muted-foreground italic">
-                      {getPublishedByText(article.author_username, article.author_gender)}
-                    </span>
                     <Badge className="bg-success/10 text-success">
                       <Coins className="w-3 h-3 mr-1" />
-                      +{article.points_awarded} bodů
+                      Autor získal +{article.points_awarded} bodů
                     </Badge>
                   </div>
                 </DialogContent>

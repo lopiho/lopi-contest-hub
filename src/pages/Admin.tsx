@@ -14,14 +14,8 @@ import { calculateRatingStats, getRatingQuality } from '@/lib/points';
 import RatingDisplay from '@/components/RatingDisplay';
 import UserBadge, { getRoleDisplayName, getRoleBadgeColor } from '@/components/UserBadge';
 import SendMessage from '@/components/SendMessage';
-import { FileText, CheckCircle, XCircle, Star, Loader2, Coins, Clock, AlertTriangle, Sparkles, TrendingUp, HelpCircle, Plus, Image as ImageIcon, Trophy, Users, Trash2, UserPlus, Crown, Edit, Mail, Send, ShoppingBag, Package, ToggleLeft, ToggleRight, Award, BookOpen, Download, RefreshCw, BarChart3, Ban, Lock, Music, Settings2, Shield, ScrollText } from 'lucide-react';
+import { FileText, CheckCircle, XCircle, Star, Loader2, Coins, Clock, AlertTriangle, Sparkles, TrendingUp, HelpCircle, Plus, Image as ImageIcon, Trophy, Users, Trash2, UserPlus, Crown, Edit, Mail, Send, ShoppingBag, Package, ToggleLeft, ToggleRight, Award, BookOpen, Download, RefreshCw, BarChart3, Ban, Lock, Music, Settings2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import SecurityLogs from '@/components/SecurityLogs';
-import RlsPoliciesOverview from '@/components/RlsPoliciesOverview';
-import SystemChangelog from '@/components/SystemChangelog';
-import AuditLog from '@/components/AuditLog';
-import SpotlightManager from '@/components/SpotlightManager';
-import CompetitionManager from '@/components/CompetitionManager';
 import { Switch } from '@/components/ui/switch';
 import { Navigate } from 'react-router-dom';
 interface Article {
@@ -61,7 +55,6 @@ interface UserProfile {
   username: string;
   points: number;
   roles: string[];
-  for_fun: boolean;
 }
 interface ShopItem {
   id: string;
@@ -272,7 +265,6 @@ export default function Admin() {
     } = await supabase.from('user_roles').select('user_id, role');
     const mappedUsers = (profilesData || []).map(p => ({
       ...p,
-      for_fun: (p as any).for_fun ?? false,
       roles: (rolesData || []).filter(r => r.user_id === p.id).map(r => r.role)
     })) as UserProfile[];
     setUsers(mappedUsers);
@@ -782,25 +774,13 @@ export default function Admin() {
       return;
     }
     if (points > 0) {
-      // Use atomic RPC function if available, fallback to legacy
-      // Type assertion needed because RPC function may not be in types yet
-      const { error: rpcError } = await (supabase.rpc as any)('update_points', {
-        _user_id: selectedArticleForPublish.author_id,
-        _amount: points
-      });
-      
-      if (rpcError && (rpcError.message?.includes('function') || rpcError.code === '42883')) {
-        // Fallback: fetch fresh and update
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('points')
-          .eq('id', selectedArticleForPublish.author_id)
-          .single();
-        if (profile) {
-          await supabase.from('profiles').update({
-            points: profile.points + points
-          }).eq('id', selectedArticleForPublish.author_id);
-        }
+      const {
+        data: profile
+      } = await supabase.from('profiles').select('points').eq('id', selectedArticleForPublish.author_id).maybeSingle();
+      if (profile) {
+        await supabase.from('profiles').update({
+          points: profile.points + points
+        }).eq('id', selectedArticleForPublish.author_id);
       }
     }
 
@@ -917,23 +897,6 @@ lopi`;
     setProcessing(false);
   };
 
-  // Toggle for_fun flag
-  const handleToggleForFun = async (userId: string, currentValue: boolean) => {
-    setProcessing(true);
-    const { error } = await supabase
-      .from('profiles')
-      .update({ for_fun: !currentValue } as any)
-      .eq('id', userId);
-    
-    if (error) {
-      toast.error('Chyba při změně statusu');
-    } else {
-      toast.success(!currentValue ? 'Uživatel nastaven jako "jen pro zábavu"' : 'Uživatel nastaven jako soutěžící');
-      setUsers(users.map(u => u.id === userId ? { ...u, for_fun: !currentValue } : u));
-    }
-    setProcessing(false);
-  };
-
   // Game handlers
   const handleCreateGame = async () => {
     if (!newGame.title.trim() || !newGame.question.trim()) {
@@ -1016,26 +979,15 @@ lopi`;
       is_winner: true
     }).eq('game_id', selectedGameForResolve.id).eq('user_id', selectedWinnerId);
 
-    // Award points using atomic RPC
+    // Award points
     if (points > 0) {
-      // Type assertion needed because RPC function may not be in types yet
-      const { error: rpcError } = await (supabase.rpc as any)('update_points', {
-        _user_id: selectedWinnerId,
-        _amount: points
-      });
-      
-      if (rpcError && (rpcError.message?.includes('function') || rpcError.code === '42883')) {
-        // Fallback: fetch fresh and update
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('points')
-          .eq('id', selectedWinnerId)
-          .single();
-        if (profile) {
-          await supabase.from('profiles').update({
-            points: profile.points + points
-          }).eq('id', selectedWinnerId);
-        }
+      const {
+        data: profile
+      } = await supabase.from('profiles').select('points').eq('id', selectedWinnerId).maybeSingle();
+      if (profile) {
+        await supabase.from('profiles').update({
+          points: profile.points + points
+        }).eq('id', selectedWinnerId);
       }
     }
     toast.success(`Tipovačka ukončena! Vítěz získal ${points} bodů`);
@@ -1299,12 +1251,6 @@ lopi`;
             <TabsTrigger value="obchudek" className="gap-2"><ShoppingBag className="w-4 h-4" />Obchůdek</TabsTrigger>
             <TabsTrigger value="users" className="gap-2"><Crown className="w-4 h-4" />Uživatelé</TabsTrigger>
             <TabsTrigger value="lvzj" className="gap-2"><BookOpen className="w-4 h-4" />LvZJ</TabsTrigger>
-            <TabsTrigger value="security" className="gap-2"><Shield className="w-4 h-4" />Security</TabsTrigger>
-            <TabsTrigger value="rls" className="gap-2"><Lock className="w-4 h-4" />RLS</TabsTrigger>
-            <TabsTrigger value="svn" className="gap-2"><ScrollText className="w-4 h-4" />SVN</TabsTrigger>
-            <TabsTrigger value="audit" className="gap-2"><ScrollText className="w-4 h-4" />Protokol</TabsTrigger>
-            <TabsTrigger value="spotlights" className="gap-2"><Sparkles className="w-4 h-4" />Poutáváky</TabsTrigger>
-            <TabsTrigger value="competition" className="gap-2"><Trophy className="w-4 h-4" />Soutěž</TabsTrigger>
             <TabsTrigger value="gdpr" className="gap-2">
               <Trash2 className="w-4 h-4" />
               GDPR {deletionRequests.length > 0 && <Badge variant="destructive" className="ml-1">{deletionRequests.length}</Badge>}
@@ -1696,13 +1642,10 @@ lopi`;
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {users.map(u => <Card key={u.id} className={`shadow-card ${u.for_fun ? 'border-accent/50' : ''}`}>
+              {users.map(u => <Card key={u.id} className="shadow-card">
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <CardTitle className="text-lg"><UserBadge username={u.username} roles={u.roles} /></CardTitle>
-                        {u.for_fun && <Badge variant="outline" className="text-xs border-accent text-accent">🎉 Pro zábavu</Badge>}
-                      </div>
+                      <CardTitle className="text-lg"><UserBadge username={u.username} roles={u.roles} /></CardTitle>
                       <Badge variant="secondary">{u.points} bodů</Badge>
                     </div>
                   </CardHeader>
@@ -1714,19 +1657,6 @@ lopi`;
                               ×
                             </button>}
                         </Badge>)}
-                    </div>
-                    <div className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-lg">
-                      <div className="flex items-center gap-2 text-sm">
-                        <span>{u.for_fun ? '🎉' : '🏆'}</span>
-                        <span className="text-muted-foreground">
-                          {u.for_fun ? 'Hraje pro zábavu' : 'Soutěží o výhru'}
-                        </span>
-                      </div>
-                      <Switch
-                        checked={u.for_fun}
-                        onCheckedChange={() => handleToggleForFun(u.id, u.for_fun)}
-                        disabled={processing}
-                      />
                     </div>
                     <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => setSelectedUserForRole(u)}>
                       <UserPlus className="w-4 h-4" />
@@ -2005,36 +1935,6 @@ lopi`;
               </div>
             )}
           </TabsContent>
-
-          {/* Security Tab */}
-          <TabsContent value="security" className="space-y-6">
-            <SecurityLogs />
-          </TabsContent>
-
-          {/* RLS Policies Tab */}
-          <TabsContent value="rls" className="space-y-6">
-            <RlsPoliciesOverview />
-          </TabsContent>
-
-          {/* SVN Tab */}
-          <TabsContent value="svn" className="space-y-6">
-            <SystemChangelog isAdmin={true} />
-          </TabsContent>
-
-          {/* Audit Log Tab */}
-          <TabsContent value="audit" className="space-y-6">
-            <AuditLog />
-          </TabsContent>
-
-          {/* Spotlights Tab */}
-          <TabsContent value="spotlights" className="space-y-6">
-            <SpotlightManager />
-          </TabsContent>
-
-          {/* Competition Management Tab */}
-          <TabsContent value="competition" className="space-y-6">
-            <CompetitionManager />
-          </TabsContent>
         </Tabs>
 
         {/* Publish Article Dialog */}
@@ -2162,12 +2062,6 @@ lopi`;
                       <SelectItem value="veverka">🐿️ Veverka (redakce)</SelectItem>
                       <SelectItem value="hudebnik">🎵 Hudebník (zábava)</SelectItem>
                       <SelectItem value="vedouci_prodejny">🛒 Vedoucí prodejny</SelectItem>
-                      <SelectItem value="alik_admin">🔵 Zvěrolékař Alíka</SelectItem>
-                      <SelectItem value="alik_helper">🟢 Správce Alíka</SelectItem>
-                      <SelectItem value="alik_editor">🔴 Redaktor Alíka</SelectItem>
-                      <SelectItem value="alik_club_manager">🔴 Správce klubovny</SelectItem>
-                      <SelectItem value="alik_board_manager">🔴 Správce nástěnek</SelectItem>
-                      <SelectItem value="alik_jester">🃏 Alíkův šašek</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

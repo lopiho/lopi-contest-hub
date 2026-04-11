@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Star, Trophy, FileText, MessageCircle, Edit2, Save, X, Mail, Send, Crown, Coins, Trash2, UserPlus, Key, Eye, EyeOff, ShoppingBag, AlertTriangle, Copy, Settings, History, Bell, Lock, Download, Ban, Flag, ClipboardList, UserCheck, RefreshCw, BarChart3 } from 'lucide-react';
+import { Loader2, Star, Trophy, FileText, MessageCircle, Edit2, Save, X, Mail, Send, Crown, Coins, Trash2, UserPlus, Key, Eye, EyeOff, ShoppingBag, AlertTriangle, Copy, Settings, BookOpen, History, Bell, Lock, Download, Ban, Flag, ClipboardList, UserCheck, RefreshCw, BarChart3, Camera } from 'lucide-react';
 import UserBadge, { getRoleDisplayName, getRoleBadgeColor } from '@/components/UserBadge';
 import { LvZJContent } from '@/lib/lvzj-parser';
 import { toast } from 'sonner';
@@ -102,6 +102,9 @@ export default function Profile() {
   const [resetPointsOpen, setResetPointsOpen] = useState(false);
   const [loadingPurchases, setLoadingPurchases] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  
+  // Avatar upload
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const isOwnProfile = user && profile && user.id === profile.id;
   const isOrganizer = viewerRoles.includes('organizer') || viewerRoles.includes('helper');
@@ -267,8 +270,11 @@ export default function Profile() {
     setExportingData(false);
   };
 
-  // LvZJ documentation - removed (page no longer exists)
-  // Users can check the LvZJ syntax by looking at examples on the site
+  // 8. Open LvZJ documentation
+  const handleOpenLvzjDocs = () => {
+    window.open('/lvzj', '_blank');
+  };
+
   // 9. Toggle email notifications (placeholder)
   const handleToggleNotifications = () => {
     setNotificationsEnabled(!notificationsEnabled);
@@ -276,9 +282,51 @@ export default function Profile() {
   };
 
   // 10. Avatar upload
-  // Avatar is now automatically loaded from Alík.cz based on username
-  // No manual upload functionality needed
-  const getAvatarUrl = (username: string) => `https://www.alik.cz/-/avatar/${encodeURIComponent(username)}`;
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !profile || !isOwnProfile) return;
+    
+    if (!file.type.startsWith('image/')) {
+      toast.error('Vyber prosím obrázek');
+      return;
+    }
+    
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Obrázek je příliš velký (max 2 MB)');
+      return;
+    }
+    
+    setUploadingAvatar(true);
+    
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${profile.id}-${Date.now()}.${fileExt}`;
+    
+    const { error: uploadError } = await supabase.storage
+      .from('tipovacky')
+      .upload(`avatars/${fileName}`, file, { upsert: true });
+    
+    if (uploadError) {
+      toast.error('Chyba při nahrávání avataru');
+      setUploadingAvatar(false);
+      return;
+    }
+    
+    const { data: urlData } = supabase.storage.from('tipovacky').getPublicUrl(`avatars/${fileName}`);
+    
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ avatar_url: urlData.publicUrl })
+      .eq('id', profile.id);
+    
+    if (updateError) {
+      toast.error('Chyba při ukládání avataru');
+    } else {
+      setProfile({ ...profile, avatar_url: urlData.publicUrl });
+      toast.success('Avatar nahrán!');
+    }
+    
+    setUploadingAvatar(false);
+  };
 
   // 10. View profile in new tab
   const handleOpenInNewTab = () => {
@@ -313,7 +361,7 @@ export default function Profile() {
     setSendingMessage(false);
   };
 
-  // 2. Add/remove points (using atomic RPC)
+  // 2. Add/remove points
   const handleAddPoints = async () => {
     if (!profile) return;
     const points = parseInt(pointsToAdd);
@@ -324,52 +372,12 @@ export default function Profile() {
 
     setAddingPoints(true);
     
-    // Try atomic RPC first
-    // Type assertion needed because RPC function may not be in types yet
-    const { data: rpcResult, error: rpcError } = await (supabase.rpc as any)('update_points', {
-      _user_id: profile.id,
-      _amount: points
-    });
+    const { error } = await supabase
+      .from('profiles')
+      .update({ points: profile.points + points })
+      .eq('id', profile.id);
 
-    let success = false;
-    let newPoints = profile.points + points;
-
-    if (rpcError && (rpcError.message.includes('function') || rpcError.code === '42883')) {
-      // Fallback to legacy method if RPC doesn't exist
-      const { data: freshProfile } = await supabase
-        .from('profiles')
-        .select('points')
-        .eq('id', profile.id)
-        .single();
-      
-      if (freshProfile) {
-        newPoints = freshProfile.points + points;
-        if (newPoints < 0) {
-          toast.error('Body nemohou jít do mínusu');
-          setAddingPoints(false);
-          return;
-        }
-        
-        const { error } = await supabase
-          .from('profiles')
-          .update({ points: newPoints })
-          .eq('id', profile.id);
-        
-        success = !error;
-      }
-    } else if (!rpcError) {
-      const result = rpcResult?.[0];
-      success = result?.success ?? false;
-      newPoints = result?.new_points ?? newPoints;
-      
-      if (!success) {
-        toast.error('Body nemohou jít do mínusu');
-        setAddingPoints(false);
-        return;
-      }
-    }
-
-    if (success || (!rpcError && rpcResult)) {
+    if (!error) {
       // Send notification message
       if (pointsReason.trim()) {
         await supabase.from('messages').insert({
@@ -380,7 +388,7 @@ export default function Profile() {
         });
       }
       
-      setProfile({ ...profile, points: newPoints });
+      setProfile({ ...profile, points: profile.points + points });
       toast.success(points > 0 ? `Přidáno ${points} bodů` : `Odebráno ${Math.abs(points)} bodů`);
       setAddPointsOpen(false);
       setPointsToAdd('');
@@ -405,7 +413,7 @@ export default function Profile() {
         .from('user_roles')
         .delete()
         .eq('user_id', profile.id)
-        .eq('role', newRole as any);
+        .eq('role', newRole as 'helper' | 'organizer' | 'user');
       
       if (!error) {
         setRoles(roles.filter(r => r !== newRole));
@@ -415,7 +423,7 @@ export default function Profile() {
       // Add role
       const { error } = await supabase
         .from('user_roles')
-        .insert([{ user_id: profile.id, role: newRole as any }]);
+        .insert([{ user_id: profile.id, role: newRole as 'helper' | 'organizer' | 'user' }]);
       
       if (!error) {
         setRoles([...roles, newRole]);
@@ -551,20 +559,31 @@ export default function Profile() {
         <Card className="mb-6">
           <CardContent className="pt-6">
             <div className="flex items-start gap-4">
-              {/* Avatar - automatically loaded from Alík.cz */}
-              <div className="relative">
+              {/* Avatar with upload */}
+              <div className="relative group">
                 <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-3xl font-display font-bold text-primary overflow-hidden">
-                  <img 
-                    src={getAvatarUrl(profile.username)} 
-                    alt={profile.username} 
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      // Fallback to first letter if avatar fails to load
-                      e.currentTarget.style.display = 'none';
-                      e.currentTarget.parentElement!.innerHTML = profile.username.charAt(0).toUpperCase();
-                    }}
-                  />
+                  {profile.avatar_url ? (
+                    <img src={profile.avatar_url} alt={profile.username} className="w-full h-full object-cover" />
+                  ) : (
+                    profile.username.charAt(0).toUpperCase()
+                  )}
                 </div>
+                {isOwnProfile && (
+                  <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                    {uploadingAvatar ? (
+                      <Loader2 className="w-6 h-6 text-white animate-spin" />
+                    ) : (
+                      <Camera className="w-6 h-6 text-white" />
+                    )}
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={handleAvatarUpload}
+                      disabled={uploadingAvatar}
+                    />
+                  </label>
+                )}
               </div>
 
               <div className="flex-1">
@@ -611,7 +630,13 @@ export default function Profile() {
                   Export dat
                 </Button>
                 
-                {/* 3. Toggle notifications */}
+                {/* 3. LvZJ documentation */}
+                <Button variant="outline" size="sm" onClick={handleOpenLvzjDocs}>
+                  <BookOpen className="w-4 h-4 mr-1" />
+                  Nápověda LvZJ
+                </Button>
+                
+                {/* 4. Toggle notifications */}
                 <Button 
                   variant={notificationsEnabled ? "outline" : "secondary"} 
                   size="sm" 
@@ -776,30 +801,6 @@ export default function Profile() {
                             <SelectItem value="organizer">
                               {roles.includes('organizer') ? '❌ Odebrat: ' : '✓ Přidat: '}
                               Organizátor
-                            </SelectItem>
-                            <SelectItem value="alik_admin">
-                              {roles.includes('alik_admin') ? '❌ Odebrat: ' : '✓ Přidat: '}
-                              🔵 Zvěrolékař Alíka
-                            </SelectItem>
-                            <SelectItem value="alik_helper">
-                              {roles.includes('alik_helper') ? '❌ Odebrat: ' : '✓ Přidat: '}
-                              🟢 Správce Alíka
-                            </SelectItem>
-                            <SelectItem value="alik_editor">
-                              {roles.includes('alik_editor') ? '❌ Odebrat: ' : '✓ Přidat: '}
-                              🔴 Redaktor Alíka
-                            </SelectItem>
-                            <SelectItem value="alik_club_manager">
-                              {roles.includes('alik_club_manager') ? '❌ Odebrat: ' : '✓ Přidat: '}
-                              🔴 Správce klubovny
-                            </SelectItem>
-                            <SelectItem value="alik_board_manager">
-                              {roles.includes('alik_board_manager') ? '❌ Odebrat: ' : '✓ Přidat: '}
-                              🔴 Správce nástěnek
-                            </SelectItem>
-                            <SelectItem value="alik_jester">
-                              {roles.includes('alik_jester') ? '❌ Odebrat: ' : '✓ Přidat: '}
-                              🃏 Alíkův šašek
                             </SelectItem>
                           </SelectContent>
                         </Select>

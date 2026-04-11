@@ -1,7 +1,6 @@
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 import { Music, ShoppingBag } from 'lucide-react';
-import AlikCrown, { hasAlikRoles } from './AlikCrown';
 
 interface UserBadgeProps {
   username: string;
@@ -24,18 +23,6 @@ export const getRoleDisplayName = (role: string): string => {
       return 'Hudebník';
     case 'vedouci_prodejny':
       return 'Vedoucí prodejny';
-    case 'alik_admin':
-      return 'Zvěrolékař Alíka';
-    case 'alik_helper':
-      return 'Správce Alíka';
-    case 'alik_editor':
-      return 'Redaktor Alíka';
-    case 'alik_club_manager':
-      return 'Správce klubovny';
-    case 'alik_board_manager':
-      return 'Správce nástěnek';
-    case 'alik_jester':
-      return 'Alíkův šašek';
     case 'user':
       return 'Uživatel';
     default:
@@ -60,7 +47,7 @@ export const getRoleBadgeColor = (role: string): string => {
   }
 };
 
-// Crown component for organizer/helper (LS internal roles)
+// Crown component for organizer/helper
 const Crown = ({ color }: { color: 'orange' | 'pink' }) => (
   <svg
     viewBox="0 0 24 24"
@@ -105,9 +92,6 @@ export default function UserBadge({ username, roles = [], className, showAt = tr
   const content = (
     <span className={cn("inline-flex items-center", linkToProfile && "hover:text-primary transition-colors", className)}>
       {showAt && '@'}{username}
-      {/* Alík.cz roles (crowns) */}
-      {hasAlikRoles(roles) && <AlikCrown roles={roles} className="ml-1" />}
-      {/* LS internal roles */}
       {isOrganizer && <Crown color="orange" />}
       {isHelper && !isOrganizer && <Crown color="pink" />}
       {isVeverka && <Squirrel />}

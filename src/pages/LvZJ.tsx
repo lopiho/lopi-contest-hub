@@ -1,0 +1,271 @@
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { LvZJContent } from '@/lib/lvzj-parser';
+import { BookOpen, Palette, Link as LinkIcon, List, Type, Box, Quote, Sparkles, Eye, Edit2, Clock, AlertTriangle, Music, Lock } from 'lucide-react';
+
+const examples = [
+  {
+    category: "Stylování textu",
+    icon: <Palette className="w-5 h-5" />,
+    items: [
+      { code: "(tučně)Tučný text", desc: "Tučné písmo" },
+      { code: "(kurzívou)Kurzíva", desc: "Kurzíva" },
+      { code: "(škrtnuté)Přeškrtnutý text", desc: "Přeškrtnutí" },
+    ]
+  },
+  {
+    category: "Barvy textu",
+    icon: <Sparkles className="w-5 h-5" />,
+    items: [
+      { code: "(červeně)Červený text", desc: "Červená" },
+      { code: "(zeleně)Zelený text", desc: "Zelená" },
+      { code: "(modře)Modrý text", desc: "Modrá" },
+      { code: "(žlutě)Žlutý text", desc: "Žlutá" },
+    ]
+  },
+  {
+    category: "Podbarvení",
+    icon: <Palette className="w-5 h-5" />,
+    items: [
+      { code: "(podbarvení)Zvýrazněný text", desc: "Výchozí podbarvení" },
+      { code: "(červené podbarvení)Text", desc: "Červené podbarvení" },
+      { code: "(zelené podbarvení)Text", desc: "Zelené podbarvení" },
+      { code: "(modré podbarvení)Text", desc: "Modré podbarvení" },
+      { code: "(žluté podbarvení)Text", desc: "Žluté podbarvení" },
+    ]
+  },
+  {
+    category: "Kombinace stylů",
+    icon: <Type className="w-5 h-5" />,
+    items: [
+      { code: "(tučně červeně)Tučný červený", desc: "Tučně + červeně, nyní lze kombinovat jen tučně + barva" }
+    ]
+  },
+  {
+    category: "Odkazy",
+    icon: <LinkIcon className="w-5 h-5" />,
+    items: [
+      { code: "https://example.com", desc: "Automatický odkaz" },
+      { code: "(odkaz na https://example.com)text odkazu(konec)", desc: "Vlastní text odkazu" },
+    ]
+  },
+  {
+    category: "Nadpisy a zarovnání",
+    icon: <Type className="w-5 h-5" />,
+    items: [
+      { code: "(nadpis)Velký nadpis", desc: "Hlavní nadpis" },
+    ]
+  },
+  {
+    category: "Seznamy",
+    icon: <List className="w-5 h-5" />,
+    items: [
+      { code: "- první položka\n- druhá položka\n- třetí položka", desc: "Odrážkový seznam" },
+      { code: "(seznam číslovaný)\n- první\n- druhý\n(konec)", desc: "Číslovaný seznam" },
+    ]
+  },
+  {
+    category: "Boxíky",
+    icon: <Box className="w-5 h-5" />,
+    items: [
+      { code: "(boxík)Obsah boxíku(konec boxíku)", desc: "Základní boxík, jiný neexistuje :)" },
+    ]
+  },
+  {
+    category: "Oddělovače",
+    icon: <Type className="w-5 h-5" />,
+    items: [
+      { code: "(oddělovač)", desc: "Vodorovná čára" },
+    ]
+  },
+  {
+    category: "Interaktivní prvky",
+    icon: <AlertTriangle className="w-5 h-5" />,
+    items: [
+      { code: "(spoiler)Skrytý text(konec)", desc: "Spoiler (klikni pro zobrazení)" },
+      { code: "(odpočet do 31. 12. 2026 23:59)", desc: "Odpočet do data" },
+      { code: "(odpočet od 1. 1. 2020)", desc: "Odpočet od data" },
+      { code: "(odpočet slovně do 31. 12. 2026)", desc: "Slovní odpočet" },
+    ]
+  },
+  {
+    category: "Speciální",
+    icon: <Sparkles className="w-5 h-5" />,
+    items: [
+      { code: "(závorka)", desc: "Zobrazí závorku bez zpracování" },
+      { code: "(prostě)nezpracovaný text(azj)", desc: "Text bez LvZJ zpracování" },
+    ]
+  },
+  {
+    category: "Hudební příkazy",
+    icon: <Music className="w-5 h-5" />,
+    items: [
+      { code: "(melodie https://youtube.com/watch?v=xxx)", desc: "Vložení hudby (YouTube/Spotify)" },
+      { code: "(playlist)\n- https://youtube.com/watch?v=1\n- https://youtube.com/watch?v=2\n(konec playlistu)", desc: "Interaktivní playlist" },
+    ]
+  },
+  {
+    category: "Omezené příkazy",
+    icon: <Lock className="w-5 h-5" />,
+    items: [
+      { code: "(melodie ...)", desc: "Pouze pro Hudebníky a Administrátory" },
+      { code: "(playlist)...(konec playlistu)", desc: "Pouze pro Hudebníky a Administrátory" },
+    ]
+  },
+];
+
+export default function LvZJ() {
+  const [testInput, setTestInput] = useState('(tučně)Ahoj světe!\n\n(červeně)Červený text(normálně) a pak normální.\n\n(spoiler)Tajný obsah(konec)\n\n(žížalka 75 %)');
+
+  return (
+    <div className="min-h-[calc(100vh-4rem)] py-8">
+      <div className="container mx-auto px-4 max-w-5xl">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-secondary rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-card">
+            <BookOpen className="w-8 h-8 text-secondary-foreground" />
+          </div>
+          <h1 className="text-3xl font-display font-bold mb-2">LvZJ – Lopihův značkovací jazyk</h1>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            Formátovací jazyk pro texty na Lopíku. Všechny příkazy píšeš do obyčejných závorek, česky, 
+            jako bys někomu diktoval/a pokyny.
+          </p>
+        </div>
+
+        {/* Test area */}
+        <Card className="mb-8 shadow-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Eye className="w-5 h-5" />
+              Vyzkoušej si LvZJ
+            </CardTitle>
+            <CardDescription>
+              Napiš text s LvZJ příkazy a sleduj živý náhled
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-2 text-sm text-muted-foreground">
+                  <Edit2 className="w-4 h-4" />
+                  Vstup
+                </div>
+                <Textarea
+                  value={testInput}
+                  onChange={(e) => setTestInput(e.target.value)}
+                  rows={8}
+                  placeholder="Napiš text s LvZJ formátováním..."
+                  className="font-mono text-sm"
+                />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-2 text-sm text-muted-foreground">
+                  <Eye className="w-4 h-4" />
+                  Náhled
+                </div>
+                <div className="p-4 bg-muted/50 rounded-lg min-h-[200px] border">
+                  <LvZJContent content={testInput} />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Reference */}
+        <Tabs defaultValue="stylování-textu" className="space-y-6">
+          <TabsList className="flex-wrap h-auto gap-1 p-1">
+            {examples.map((cat) => (
+              <TabsTrigger key={cat.category} value={cat.category.toLowerCase().replace(/\s+/g, '-')} className="text-xs">
+                {cat.category}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          {examples.map((category) => (
+            <TabsContent key={category.category} value={category.category.toLowerCase().replace(/\s+/g, '-')}>
+              <Card className="shadow-card">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    {category.icon}
+                    {category.category}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {category.items.map((item, i) => (
+                      <div key={i} className="grid md:grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg border">
+                        <div>
+                          <div className="text-xs text-muted-foreground mb-1">Kód</div>
+                          <code className="text-sm font-mono bg-background px-2 py-1 rounded block whitespace-pre-wrap break-all">
+                            {item.code}
+                          </code>
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground mb-1">Výsledek</div>
+                          <div className="bg-background p-2 rounded min-h-[32px]">
+                            <LvZJContent content={item.code} />
+                          </div>
+                        </div>
+                        <div className="flex items-center">
+                          <Badge variant="secondary">{item.desc}</Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          ))}
+        </Tabs>
+
+        {/* Tips */}
+        <Card className="mt-8 shadow-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5" />
+              Tipy a triky
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
+              <h3 className="font-semibold mb-2">Kombinování stylů</h3>
+              <p className="text-sm text-muted-foreground">
+                Styly můžeš kombinovat v jednom příkazu: <code className="bg-background px-1 rounded">(tučně červeně kurzívou)</code>
+              </p>
+            </div>
+            <div className="p-4 bg-accent/10 rounded-lg border border-accent/20">
+              <h3 className="font-semibold mb-2">Konec řádku ruší stylování</h3>
+              <p className="text-sm text-muted-foreground">
+                Každý nový řádek automaticky vrátí text do normálního stylu. Nemusíš používat <code className="bg-background px-1 rounded">(normálně)</code>.
+              </p>
+            </div>
+            <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/20">
+              <h3 className="font-semibold mb-2">Vnořené prvky</h3>
+              <p className="text-sm text-muted-foreground">
+                Boxíky a citace mohou obsahovat další LvZJ formátování uvnitř.
+              </p>
+            </div>
+            <div className="p-4 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
+              <h3 className="font-semibold mb-2">Escape závorek</h3>
+              <p className="text-sm text-muted-foreground">
+                Pokud potřebuješ napsat závorku bez zpracování, použij <code className="bg-background px-1 rounded">(závorka)</code> nebo obal text mezi <code className="bg-background px-1 rounded">(prostě)</code> a <code className="bg-background px-1 rounded">(azj)</code>.
+              </p>
+            </div>
+            <div className="p-4 bg-purple-500/10 rounded-lg border border-purple-500/20">
+              <h3 className="font-semibold mb-2 flex items-center gap-2">
+                <Music className="w-4 h-4" />
+                Hudební příkazy (omezené)
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Příkazy <code className="bg-background px-1 rounded">(melodie)</code> a <code className="bg-background px-1 rounded">(playlist)</code> jsou dostupné pouze pro uživatele s rolí Hudebník nebo Administrátor. Ostatní uživatelé uvidí místo obsahu upozornění o omezeném obsahu.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
