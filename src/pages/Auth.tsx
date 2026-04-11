@@ -58,14 +58,47 @@ export default function Auth() {
 
   const [searchParams] = useSearchParams();
   const isResetMode = searchParams.get('reset') === 'true';
+  const oauthError = searchParams.get('error');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  useEffect(() => {
+    if (oauthError) {
+      toast.error(`Chyba OAuth: ${oauthError}`);
+    }
+  }, [oauthError]);
 
   useEffect(() => {
     if (user && !isResetMode) {
       navigate('/');
     }
   }, [user, navigate, isResetMode]);
+
+  const handleAlikOAuth = async () => {
+    setLoading(true);
+    try {
+      const callbackUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/oauth-callback`;
+      const response = await supabase.functions.invoke('oauth-initiate', {
+        body: { redirect_uri: callbackUrl },
+      });
+
+      if (response.error) {
+        toast.error('Nepodařilo se zahájit přihlášení přes Alík');
+        return;
+      }
+
+      const { url } = response.data;
+      if (url) {
+        window.location.href = url;
+      } else {
+        toast.error('Nepodařilo se získat přihlašovací URL');
+      }
+    } catch {
+      toast.error('Chyba při přihlašování přes Alík');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
