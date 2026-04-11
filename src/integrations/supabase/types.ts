@@ -79,6 +79,42 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_log: {
+        Row: {
+          action: string
+          changed_by: string | null
+          changed_by_role: string | null
+          created_at: string
+          id: string
+          new_data: Json | null
+          old_data: Json | null
+          record_id: string
+          table_name: string
+        }
+        Insert: {
+          action: string
+          changed_by?: string | null
+          changed_by_role?: string | null
+          created_at?: string
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id: string
+          table_name: string
+        }
+        Update: {
+          action?: string
+          changed_by?: string | null
+          changed_by_role?: string | null
+          created_at?: string
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id?: string
+          table_name?: string
+        }
+        Relationships: []
+      }
       deletion_requests: {
         Row: {
           created_at: string
@@ -216,10 +252,39 @@ export type Database = {
         }
         Relationships: []
       }
+      oauth_states: {
+        Row: {
+          code_verifier: string
+          created_at: string | null
+          expires_at: string
+          id: string
+          state: string
+          used_at: string | null
+        }
+        Insert: {
+          code_verifier: string
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          state: string
+          used_at?: string | null
+        }
+        Update: {
+          code_verifier?: string
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          state?: string
+          used_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
           created_at: string
+          for_fun: boolean | null
+          gender: string | null
           id: string
           points: number
           updated_at: string
@@ -228,6 +293,8 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          for_fun?: boolean | null
+          gender?: string | null
           id: string
           points?: number
           updated_at?: string
@@ -236,6 +303,8 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           created_at?: string
+          for_fun?: boolean | null
+          gender?: string | null
           id?: string
           points?: number
           updated_at?: string
@@ -280,6 +349,234 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      season_reward_claims: {
+        Row: {
+          claimed_at: string
+          id: string
+          reward_id: string
+          user_id: string
+        }
+        Insert: {
+          claimed_at?: string
+          id?: string
+          reward_id: string
+          user_id: string
+        }
+        Update: {
+          claimed_at?: string
+          id?: string
+          reward_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "season_reward_claims_reward_id_fkey"
+            columns: ["reward_id"]
+            isOneToOne: false
+            referencedRelation: "season_rewards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      season_rewards: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          required_correct_count: number
+          reward_type: string
+          reward_value: number
+          season_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          required_correct_count?: number
+          reward_type?: string
+          reward_value?: number
+          season_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          required_correct_count?: number
+          reward_type?: string
+          reward_value?: number
+          season_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "season_rewards_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      season_riddle_attempts: {
+        Row: {
+          answer: string
+          created_at: string
+          id: string
+          is_correct: boolean
+          riddle_id: string
+          user_id: string
+        }
+        Insert: {
+          answer: string
+          created_at?: string
+          id?: string
+          is_correct?: boolean
+          riddle_id: string
+          user_id: string
+        }
+        Update: {
+          answer?: string
+          created_at?: string
+          id?: string
+          is_correct?: boolean
+          riddle_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "season_riddle_attempts_riddle_id_fkey"
+            columns: ["riddle_id"]
+            isOneToOne: false
+            referencedRelation: "season_riddles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      season_riddles: {
+        Row: {
+          answer: string
+          created_at: string
+          created_by: string
+          hint: string | null
+          id: string
+          is_published: boolean
+          question: string
+          reward_discount_percent: number | null
+          reward_item_id: string | null
+          scheduled_date: string
+          season_id: string
+          title: string
+        }
+        Insert: {
+          answer: string
+          created_at?: string
+          created_by: string
+          hint?: string | null
+          id?: string
+          is_published?: boolean
+          question: string
+          reward_discount_percent?: number | null
+          reward_item_id?: string | null
+          scheduled_date: string
+          season_id: string
+          title: string
+        }
+        Update: {
+          answer?: string
+          created_at?: string
+          created_by?: string
+          hint?: string | null
+          id?: string
+          is_published?: boolean
+          question?: string
+          reward_discount_percent?: number | null
+          reward_item_id?: string | null
+          scheduled_date?: string
+          season_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "season_riddles_reward_item_id_fkey"
+            columns: ["reward_item_id"]
+            isOneToOne: false
+            referencedRelation: "shop_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "season_riddles_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seasons: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          is_active: boolean
+          is_visible: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_visible?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_visible?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      security_logs: {
+        Row: {
+          created_at: string | null
+          details: Json | null
+          endpoint: string | null
+          event_type: string
+          id: string
+          ip_address: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          details?: Json | null
+          endpoint?: string | null
+          event_type: string
+          id?: string
+          ip_address?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          details?: Json | null
+          endpoint?: string | null
+          event_type?: string
+          id?: string
+          ip_address?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       shop_items: {
         Row: {
@@ -341,6 +638,89 @@ export type Database = {
         }
         Relationships: []
       }
+      spotlights: {
+        Row: {
+          color: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean
+          link: string | null
+          reference_id: string | null
+          sort_order: number
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          link?: string | null
+          reference_id?: string | null
+          sort_order?: number
+          title: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          link?: string | null
+          reference_id?: string | null
+          sort_order?: number
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      system_changelog: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          title: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          title: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "system_changelog_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -371,9 +751,33 @@ export type Database = {
         }
         Returns: boolean
       }
+      purchase_item: {
+        Args: { _item_id: string; _quantity?: number; _user_id: string }
+        Returns: {
+          message: string
+          purchase_id: string
+          success: boolean
+        }[]
+      }
+      update_points: {
+        Args: { _amount: number; _user_id: string }
+        Returns: {
+          new_points: number
+          success: boolean
+        }[]
+      }
     }
     Enums: {
-      app_role: "user" | "helper" | "organizer"
+      app_role:
+        | "user"
+        | "helper"
+        | "organizer"
+        | "alik_admin"
+        | "alik_helper"
+        | "alik_editor"
+        | "alik_club_manager"
+        | "alik_board_manager"
+        | "alik_jester"
       article_status:
         | "pending"
         | "approved"
@@ -508,7 +912,17 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["user", "helper", "organizer"],
+      app_role: [
+        "user",
+        "helper",
+        "organizer",
+        "alik_admin",
+        "alik_helper",
+        "alik_editor",
+        "alik_club_manager",
+        "alik_board_manager",
+        "alik_jester",
+      ],
       article_status: ["pending", "approved", "rejected", "rated", "published"],
       guessing_game_status: ["active", "closed", "resolved"],
     },
