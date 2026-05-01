@@ -1,5 +1,3 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -14,39 +12,16 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const expectedPassword = Deno.env.get("OAUTH_CLIENT_SECRET")!;
 
-    // Authenticate caller
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Chybí autorizace" }), {
+    // Password check (sent via X-Export-Password header or ?password= query)
+    const url = new URL(req.url);
+    const provided =
+      req.headers.get("x-export-password") ?? url.searchParams.get("password");
+
+    if (!provided || provided !== expectedPassword) {
+      return new Response(JSON.stringify({ error: "Neplatné heslo" }), {
         status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: userData, error: userErr } = await userClient.auth.getUser();
-    if (userErr || !userData.user) {
-      return new Response(JSON.stringify({ error: "Neplatný token" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Check admin role
-    const admin = createClient(supabaseUrl, serviceRoleKey);
-    const { data: roles } = await admin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userData.user.id);
-
-    const isAdmin = roles?.some((r: { role: string }) => r.role === "admin");
-    if (!isAdmin) {
-      return new Response(JSON.stringify({ error: "Pouze pro adminy" }), {
-        status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
