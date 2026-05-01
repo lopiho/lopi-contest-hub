@@ -43,13 +43,9 @@ Deno.serve(async (req) => {
       .map(([k, v]) => `${k}=${v}`)
       .join("\n");
 
-    return new Response(envText, {
+    return new Response(JSON.stringify({ env: envText }), {
       status: 200,
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "text/plain; charset=utf-8",
-        "Content-Disposition": 'attachment; filename=".env"',
-      },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
     console.error("export-server-env error:", err);
