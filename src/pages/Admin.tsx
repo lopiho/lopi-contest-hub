@@ -1277,6 +1277,19 @@ lopi`;
           </CardContent></Card>
         </div>
 
+        <div className="flex justify-end mb-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportEnv}
+            disabled={exportingEnv}
+            className="gap-2"
+          >
+            {exportingEnv ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            Stáhnout .env serveru
+          </Button>
+        </div>
+
         <Tabs defaultValue="articles" className="space-y-6">
           <TabsList className="flex-wrap">
             <TabsTrigger value="articles" className="gap-2"><FileText className="w-4 h-4" />Články</TabsTrigger>
