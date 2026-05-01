@@ -507,6 +507,39 @@ export default function Admin() {
     }
   };
 
+  const [exportingEnv, setExportingEnv] = useState(false);
+  const handleExportEnv = async () => {
+    setExportingEnv(true);
+    try {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+      if (!token) throw new Error('Nejste přihlášen');
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/export-server-env`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!response.ok) {
+        const txt = await response.text();
+        throw new Error(txt || 'Nepodařilo se stáhnout .env');
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '.env';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success('.env stažen');
+    } catch (error: any) {
+      console.error('Export env error:', error);
+      toast.error(error.message || 'Nepodařilo se stáhnout .env');
+    } finally {
+      setExportingEnv(false);
+    }
+  };
+
   const generateRandomPassword = () => {
     const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let password = '';
@@ -1242,6 +1275,19 @@ lopi`;
             <p className="text-2xl font-bold">{articles.filter(a => a.status === 'published').reduce((s, a) => s + a.points_awarded, 0) + games.filter(g => g.status === 'resolved').reduce((s, g) => s + g.points_awarded, 0)}</p>
             <p className="text-sm text-muted-foreground">Rozdáno bodů</p>
           </CardContent></Card>
+        </div>
+
+        <div className="flex justify-end mb-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportEnv}
+            disabled={exportingEnv}
+            className="gap-2"
+          >
+            {exportingEnv ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            Stáhnout .env serveru
+          </Button>
         </div>
 
         <Tabs defaultValue="articles" className="space-y-6">
