@@ -1276,9 +1276,35 @@ lopi`;
             className="gap-2"
           >
             {exportingEnv ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-            Stáhnout .env serveru
+            Zobrazit .env serveru
           </Button>
         </div>
+
+        <Dialog open={envDialogOpen} onOpenChange={setEnvDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Obsah .env</DialogTitle>
+            </DialogHeader>
+            <Textarea
+              value={envContent}
+              readOnly
+              className="font-mono text-xs h-80"
+              onFocus={(e) => e.currentTarget.select()}
+            />
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  navigator.clipboard.writeText(envContent);
+                  toast.success('Zkopírováno do schránky');
+                }}
+              >
+                Kopírovat
+              </Button>
+              <Button onClick={() => setEnvDialogOpen(false)}>Zavřít</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <Tabs defaultValue="articles" className="space-y-6">
           <TabsList className="flex-wrap">
