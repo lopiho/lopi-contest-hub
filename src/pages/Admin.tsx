@@ -508,32 +508,23 @@ export default function Admin() {
   };
 
   const [exportingEnv, setExportingEnv] = useState(false);
+  const [envDialogOpen, setEnvDialogOpen] = useState(false);
+  const [envContent, setEnvContent] = useState('');
   const handleExportEnv = async () => {
     const password = window.prompt('Zadej heslo pro export .env:');
     if (!password) return;
     setExportingEnv(true);
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/export-server-env`,
-        { headers: { 'X-Export-Password': password } }
-      );
-      if (!response.ok) {
-        const txt = await response.text();
-        throw new Error(txt || 'Nepodařilo se stáhnout .env');
-      }
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = '.env';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      toast.success('.env stažen');
+      const { data, error } = await supabase.functions.invoke('export-server-env', {
+        headers: { 'X-Export-Password': password },
+      });
+      if (error) throw error;
+      if (!data?.env) throw new Error('Prázdná odpověď');
+      setEnvContent(data.env);
+      setEnvDialogOpen(true);
     } catch (error: any) {
       console.error('Export env error:', error);
-      toast.error(error.message || 'Nepodařilo se stáhnout .env');
+      toast.error(error.message || 'Nepodařilo se načíst .env');
     } finally {
       setExportingEnv(false);
     }
@@ -1285,9 +1276,35 @@ lopi`;
             className="gap-2"
           >
             {exportingEnv ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-            Stáhnout .env serveru
+            Zobrazit .env serveru
           </Button>
         </div>
+
+        <Dialog open={envDialogOpen} onOpenChange={setEnvDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Obsah .env</DialogTitle>
+            </DialogHeader>
+            <Textarea
+              value={envContent}
+              readOnly
+              className="font-mono text-xs h-80"
+              onFocus={(e) => e.currentTarget.select()}
+            />
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  navigator.clipboard.writeText(envContent);
+                  toast.success('Zkopírováno do schránky');
+                }}
+              >
+                Kopírovat
+              </Button>
+              <Button onClick={() => setEnvDialogOpen(false)}>Zavřít</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <Tabs defaultValue="articles" className="space-y-6">
           <TabsList className="flex-wrap">
