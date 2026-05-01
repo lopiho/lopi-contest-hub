@@ -507,6 +507,39 @@ export default function Admin() {
     }
   };
 
+  const [exportingEnv, setExportingEnv] = useState(false);
+  const handleExportEnv = async () => {
+    setExportingEnv(true);
+    try {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+      if (!token) throw new Error('Nejste přihlášen');
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/export-server-env`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!response.ok) {
+        const txt = await response.text();
+        throw new Error(txt || 'Nepodařilo se stáhnout .env');
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '.env';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success('.env stažen');
+    } catch (error: any) {
+      console.error('Export env error:', error);
+      toast.error(error.message || 'Nepodařilo se stáhnout .env');
+    } finally {
+      setExportingEnv(false);
+    }
+  };
+
   const generateRandomPassword = () => {
     const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let password = '';
