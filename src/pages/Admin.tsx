@@ -17,7 +17,7 @@ import SendMessage from '@/components/SendMessage';
 import { FileText, CheckCircle, XCircle, Star, Loader2, Coins, Clock, AlertTriangle, Sparkles, TrendingUp, HelpCircle, Plus, Image as ImageIcon, Trophy, Users, Trash2, UserPlus, Crown, Edit, Mail, Send, ShoppingBag, Package, ToggleLeft, ToggleRight, Award, BookOpen, Download, RefreshCw, BarChart3, Ban, Lock, Music, Settings2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useParams, useNavigate } from 'react-router-dom';
 interface Article {
   id: string;
   title: string;
@@ -89,6 +89,62 @@ export default function Admin() {
     user,
     loading: authLoading
   } = useAuth();
+  const { section, subsection } = useParams<{ section?: string; subsection?: string }>();
+  const navigate = useNavigate();
+
+  // URL <-> tab mapping
+  const sectionToTab: Record<string, string> = {
+    clanky: 'articles',
+    tipovacky: 'tipovacky',
+    obchudek: 'obchudek',
+    uzivatele: 'users',
+    lvzj: 'lvzj',
+    gdpr: 'gdpr',
+  };
+  const tabToSection: Record<string, string> = {
+    articles: 'clanky',
+    tipovacky: 'tipovacky',
+    obchudek: 'obchudek',
+    users: 'uzivatele',
+    lvzj: 'lvzj',
+    gdpr: 'gdpr',
+  };
+  const articleSubMap: Record<string, string> = {
+    schvalit: 'pending',
+    publikovat: 'approved',
+    publikovano: 'published',
+    vse: 'all',
+  };
+  const articleSubReverse: Record<string, string> = {
+    pending: 'schvalit',
+    approved: 'publikovat',
+    published: 'publikovano',
+    all: 'vse',
+  };
+  const shopSubMap: Record<string, string> = {
+    polozky: 'items',
+    objednavky: 'orders',
+  };
+  const shopSubReverse: Record<string, string> = {
+    items: 'polozky',
+    orders: 'objednavky',
+  };
+
+  const activeTab = (section && sectionToTab[section]) || 'articles';
+  const articlesSubTab = (subsection && articleSubMap[subsection]) || 'pending';
+  const shopSubTab = (subsection && shopSubMap[subsection]) || 'items';
+
+  const handleTabChange = (value: string) => {
+    const slug = tabToSection[value] || value;
+    navigate(`/admin/${slug}`);
+  };
+  const handleArticleSubChange = (value: string) => {
+    navigate(`/admin/clanky/${articleSubReverse[value] || value}`);
+  };
+  const handleShopSubChange = (value: string) => {
+    navigate(`/admin/obchudek/${shopSubReverse[value] || value}`);
+  };
+
   const [isOrganizer, setIsOrganizer] = useState(false);
   const [checkingRole, setCheckingRole] = useState(true);
   const [articles, setArticles] = useState<Article[]>([]);
@@ -1306,7 +1362,7 @@ lopi`;
           </DialogContent>
         </Dialog>
 
-        <Tabs defaultValue="articles" orientation="vertical" className="flex flex-col lg:flex-row gap-6">
+        <Tabs value={activeTab} onValueChange={handleTabChange} orientation="vertical" className="flex flex-col lg:flex-row gap-6">
           <aside className="lg:w-64 lg:shrink-0">
             <div className="lg:sticky lg:top-20 space-y-4">
               <h2 className="text-sm font-display font-bold uppercase tracking-wider text-muted-foreground px-2">
@@ -1340,7 +1396,7 @@ lopi`;
 
           {/* Articles Tab */}
           <TabsContent value="articles" className="space-y-6">
-            <Tabs defaultValue="pending">
+            <Tabs value={articlesSubTab} onValueChange={handleArticleSubChange}>
               <TabsList className="grid w-full max-w-2xl grid-cols-4">
                 <TabsTrigger value="pending">Ke schválení ({pendingArticles.length})</TabsTrigger>
                 <TabsTrigger value="approved">K publikaci ({approvedArticles.length})</TabsTrigger>
@@ -1574,7 +1630,7 @@ lopi`;
               </Dialog>
               </div>
             </div>
-            <Tabs defaultValue="items">
+            <Tabs value={shopSubTab} onValueChange={handleShopSubChange}>
               <TabsList>
                 <TabsTrigger value="items">Položky ({shopItems.length})</TabsTrigger>
                 <TabsTrigger value="orders">Objednávky ({purchases.filter(p => p.status === 'pending').length})</TabsTrigger>
