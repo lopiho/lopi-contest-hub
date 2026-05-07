@@ -1306,18 +1306,37 @@ lopi`;
           </DialogContent>
         </Dialog>
 
-        <Tabs defaultValue="articles" className="space-y-6">
-          <TabsList className="flex-wrap">
-            <TabsTrigger value="articles" className="gap-2"><FileText className="w-4 h-4" />Články</TabsTrigger>
-            <TabsTrigger value="tipovacky" className="gap-2"><HelpCircle className="w-4 h-4" />Tipovačky</TabsTrigger>
-            <TabsTrigger value="obchudek" className="gap-2"><ShoppingBag className="w-4 h-4" />Obchůdek</TabsTrigger>
-            <TabsTrigger value="users" className="gap-2"><Crown className="w-4 h-4" />Uživatelé</TabsTrigger>
-            <TabsTrigger value="lvzj" className="gap-2"><BookOpen className="w-4 h-4" />LvZJ</TabsTrigger>
-            <TabsTrigger value="gdpr" className="gap-2">
-              <Trash2 className="w-4 h-4" />
-              GDPR {deletionRequests.length > 0 && <Badge variant="destructive" className="ml-1">{deletionRequests.length}</Badge>}
-            </TabsTrigger>
-          </TabsList>
+        <Tabs defaultValue="articles" orientation="vertical" className="flex flex-col lg:flex-row gap-6">
+          <aside className="lg:w-64 lg:shrink-0">
+            <div className="lg:sticky lg:top-20 space-y-4">
+              <h2 className="text-sm font-display font-bold uppercase tracking-wider text-muted-foreground px-2">
+                Sekce administrace
+              </h2>
+              <TabsList className="flex lg:flex-col h-auto w-full bg-card border rounded-xl p-2 gap-1 lg:items-stretch overflow-x-auto lg:overflow-visible">
+                <TabsTrigger value="articles" className="justify-start gap-2 w-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-card">
+                  <FileText className="w-4 h-4" />Články
+                </TabsTrigger>
+                <TabsTrigger value="tipovacky" className="justify-start gap-2 w-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-card">
+                  <HelpCircle className="w-4 h-4" />Tipovačky
+                </TabsTrigger>
+                <TabsTrigger value="obchudek" className="justify-start gap-2 w-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-card">
+                  <ShoppingBag className="w-4 h-4" />Obchůdek
+                </TabsTrigger>
+                <TabsTrigger value="users" className="justify-start gap-2 w-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-card">
+                  <Crown className="w-4 h-4" />Uživatelé
+                </TabsTrigger>
+                <TabsTrigger value="lvzj" className="justify-start gap-2 w-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-card">
+                  <BookOpen className="w-4 h-4" />LvZJ
+                </TabsTrigger>
+                <TabsTrigger value="gdpr" className="justify-start gap-2 w-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-card">
+                  <Trash2 className="w-4 h-4" />
+                  <span>GDPR</span>
+                  {deletionRequests.length > 0 && <Badge variant="destructive" className="ml-auto">{deletionRequests.length}</Badge>}
+                </TabsTrigger>
+              </TabsList>
+            </div>
+          </aside>
+          <div className="flex-1 min-w-0 space-y-6">
 
           {/* Articles Tab */}
           <TabsContent value="articles" className="space-y-6">
@@ -1997,6 +2016,7 @@ lopi`;
               </div>
             )}
           </TabsContent>
+          </div>
         </Tabs>
 
         {/* Publish Article Dialog */}
