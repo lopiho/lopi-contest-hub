@@ -1368,27 +1368,94 @@ lopi`;
               <h2 className="text-sm font-display font-bold uppercase tracking-wider text-muted-foreground px-2">
                 Sekce administrace
               </h2>
-              <TabsList className="flex lg:flex-col h-auto w-full bg-card border rounded-xl p-2 gap-1 lg:items-stretch overflow-x-auto lg:overflow-visible">
-                <TabsTrigger value="articles" className="justify-start gap-2 w-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-card">
-                  <FileText className="w-4 h-4" />Články
-                </TabsTrigger>
-                <TabsTrigger value="tipovacky" className="justify-start gap-2 w-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-card">
-                  <HelpCircle className="w-4 h-4" />Tipovačky
-                </TabsTrigger>
-                <TabsTrigger value="obchudek" className="justify-start gap-2 w-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-card">
-                  <ShoppingBag className="w-4 h-4" />Obchůdek
-                </TabsTrigger>
-                <TabsTrigger value="users" className="justify-start gap-2 w-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-card">
-                  <Crown className="w-4 h-4" />Uživatelé
-                </TabsTrigger>
-                <TabsTrigger value="lvzj" className="justify-start gap-2 w-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-card">
-                  <BookOpen className="w-4 h-4" />LvZJ
-                </TabsTrigger>
-                <TabsTrigger value="gdpr" className="justify-start gap-2 w-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-card">
-                  <Trash2 className="w-4 h-4" />
-                  <span>GDPR</span>
-                  {deletionRequests.length > 0 && <Badge variant="destructive" className="ml-auto">{deletionRequests.length}</Badge>}
-                </TabsTrigger>
+              {(() => {
+                const menu: { value: string; label: string; icon: any; badge?: number; children?: { sub: string; label: string; count?: number }[] }[] = [
+                  {
+                    value: 'articles', label: 'Články', icon: FileText,
+                    children: [
+                      { sub: 'schvalit', label: 'Ke schválení', count: pendingArticles.length },
+                      { sub: 'publikovat', label: 'K publikaci', count: approvedArticles.length },
+                      { sub: 'publikovano', label: 'Publikováno' },
+                      { sub: 'vse', label: 'Vše', count: articles.length },
+                    ],
+                  },
+                  { value: 'tipovacky', label: 'Tipovačky', icon: HelpCircle },
+                  {
+                    value: 'obchudek', label: 'Obchůdek', icon: ShoppingBag,
+                    children: [
+                      { sub: 'polozky', label: 'Položky', count: shopItems.length },
+                      { sub: 'objednavky', label: 'Objednávky', count: purchases.filter(p => p.status === 'pending').length },
+                    ],
+                  },
+                  { value: 'users', label: 'Uživatelé', icon: Crown },
+                  { value: 'lvzj', label: 'LvZJ', icon: BookOpen },
+                  { value: 'gdpr', label: 'GDPR', icon: Trash2, badge: deletionRequests.length },
+                ];
+                return (
+                  <nav className="flex flex-col w-full bg-card border rounded-xl p-2 gap-1">
+                    {menu.map(item => {
+                      const Icon = item.icon;
+                      const isActive = activeTab === item.value;
+                      return (
+                        <div key={item.value}>
+                          <button
+                            type="button"
+                            onClick={() => handleTabChange(item.value)}
+                            className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                              isActive
+                                ? 'bg-primary text-primary-foreground shadow-card'
+                                : 'hover:bg-muted text-foreground'
+                            }`}
+                          >
+                            <Icon className="w-4 h-4" />
+                            <span className="flex-1 text-left">{item.label}</span>
+                            {item.badge ? (
+                              <Badge variant="destructive">{item.badge}</Badge>
+                            ) : null}
+                          </button>
+                          {isActive && item.children && (
+                            <div className="ml-7 mt-1 mb-1 flex flex-col gap-0.5 border-l border-border pl-2">
+                              {item.children.map(child => {
+                                const childActive =
+                                  (item.value === 'articles' && articlesSubTab === articleSubMap[child.sub]) ||
+                                  (item.value === 'obchudek' && shopSubTab === shopSubMap[child.sub]);
+                                const handler =
+                                  item.value === 'articles'
+                                    ? () => navigate(`/admin/clanky/${child.sub}`)
+                                    : () => navigate(`/admin/obchudek/${child.sub}`);
+                                return (
+                                  <button
+                                    key={child.sub}
+                                    type="button"
+                                    onClick={handler}
+                                    className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${
+                                      childActive
+                                        ? 'bg-primary/10 text-primary font-medium'
+                                        : 'hover:bg-muted text-muted-foreground'
+                                    }`}
+                                  >
+                                    <span className="flex-1 text-left">{child.label}</span>
+                                    {typeof child.count === 'number' && child.count > 0 && (
+                                      <Badge variant="secondary" className="text-xs">{child.count}</Badge>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </nav>
+                );
+              })()}
+              <TabsList className="hidden">
+                <TabsTrigger value="articles" />
+                <TabsTrigger value="tipovacky" />
+                <TabsTrigger value="obchudek" />
+                <TabsTrigger value="users" />
+                <TabsTrigger value="lvzj" />
+                <TabsTrigger value="gdpr" />
               </TabsList>
             </div>
           </aside>
